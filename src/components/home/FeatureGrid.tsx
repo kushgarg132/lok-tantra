@@ -64,6 +64,18 @@ const features = [
     ),
   },
   {
+    title: "Bureaucracy Intelligence",
+    description: "IAS/IPS/IFoS rank pyramids, PMO org chart, Cabinet Secretariat, district administration from Collector to Patwari, and how policy flows from PM to citizen in 8 steps.",
+    href: "/bureaucracy",
+    color: "slate",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+        <line x1="6" y1="8" x2="18" y2="8" /><line x1="6" y1="11" x2="14" y2="11" />
+      </svg>
+    ),
+  },
+  {
     title: "Governance Simulator",
     description: "Simulate passing a bill, forming a coalition, declaring an emergency, or amending the Constitution. Learn by doing.",
     href: "/simulator",
@@ -98,6 +110,20 @@ const features = [
       </svg>
     ),
   },
+  {
+    title: "Political Funding & Transparency",
+    description: "Follow the money — electoral bonds (₹16,518 cr), corporate donation flows, MP affidavits, and the influence network connecting donors to parties to policy.",
+    href: "/funding",
+    color: "red",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="8" y1="10" x2="16" y2="10" />
+      </svg>
+    ),
+  },
 ];
 
 const colorMap: Record<string, string> = {
@@ -109,6 +135,8 @@ const colorMap: Record<string, string> = {
   amber: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 group-hover:bg-amber-200",
   teal: "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 group-hover:bg-teal-200",
   jade: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 group-hover:bg-emerald-200",
+  slate: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 group-hover:bg-slate-200",
+  red: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 group-hover:bg-red-200",
 };
 
 export function FeatureGrid() {
