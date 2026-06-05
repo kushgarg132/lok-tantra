@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useTransition } from "react";
+import { useState, useEffect, useCallback, useRef, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SearchHit, SearchDomain, SearchMode, SearchAnswer } from "@/lib/search/types";
 
@@ -313,11 +313,11 @@ export function GovernanceSearch() {
     [domain, mode, doSearch, startTransition],
   );
 
-  // Attach follow-up listener
-  useState(() => {
+  // Attach follow-up listener — must be in useEffect (document is not available during SSR)
+  useEffect(() => {
     document.addEventListener("loktantra:search", handleFollowUp);
     return () => document.removeEventListener("loktantra:search", handleFollowUp);
-  });
+  }, [handleFollowUp]);
 
   const clear = () => {
     setQuery("");
