@@ -232,11 +232,9 @@ async function main() {
   if (!court) {
     court = await prisma.court.create({
       data: {
-        name: "Supreme Court of India",
-        type: "apex",
-        level: "national",
-        location: "New Delhi",
-        establishedYear: 1950,
+        name:        "Supreme Court of India",
+        type:        "apex",
+        established: 1950,
         jurisdiction: "All India",
         description: "The apex court of India and the highest constitutional court",
       },

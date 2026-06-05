@@ -8,7 +8,7 @@ export class ECIIngestor {
   /**
    * Main entry point for scraping an ECI constituency results page.
    */
-  async processConstituencyResults(url: string, electionYear: parseInt, electionType: string): Promise<void> {
+  async processConstituencyResults(url: string, electionYear: number, electionType: string): Promise<void> {
     console.log(`[ECI] Fetching results from: ${url}`);
     
     try {
