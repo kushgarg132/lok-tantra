@@ -12,19 +12,19 @@ export const metadata: Metadata = {
 
 export default async function ConstitutionPage() {
   const [parts, articles, amendments, cases] = await Promise.all([
-    prisma.constitutionPart.findMany({ orderBy: { number: "asc" } }),
+    prisma.constitutionPart.findMany({ orderBy: { number: "asc" } }).catch(() => []),
     prisma.constitutionArticle.findMany({
       include: { amendments: true, cases: true, part: true },
       orderBy: { number: "asc" },
-    }),
+    }).catch(() => []),
     prisma.amendment.findMany({
       include: { articlesAffected: { select: { number: true } } },
       orderBy: { number: "asc" },
-    }),
+    }).catch(() => []),
     prisma.landmarkCase.findMany({
       include: { articlesInterpreted: { select: { number: true } } },
       orderBy: { year: "asc" },
-    }),
+    }).catch(() => []),
   ]);
 
   const serializedArticles = articles.map((a) => ({

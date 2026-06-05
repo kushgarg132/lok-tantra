@@ -18,7 +18,7 @@ const categoryColors: Record<string, { bg: string; text: string; dot: string }> 
 };
 
 export default async function TimelinePage() {
-  const events = await prisma.timelineEvent.findMany({ orderBy: { date: "asc" } });
+  const events = await prisma.timelineEvent.findMany({ orderBy: { date: "asc" } }).catch(() => []);
 
   return (
     <div className="min-h-screen">

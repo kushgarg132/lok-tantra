@@ -14,12 +14,12 @@ export default async function ElectionsPage() {
     prisma.partyElectionResult.findMany({
       where: { type: "lok_sabha" },
       orderBy: [{ year: "desc" }, { seats: "desc" }],
-    }),
+    }).catch(() => []),
     prisma.electionSummary.findMany({
       where: { type: "lok_sabha" },
       orderBy: { year: "asc" },
-    }),
-    prisma.stateUT.findMany({ orderBy: { lsSeats: "desc" } }),
+    }).catch(() => []),
+    prisma.stateUT.findMany({ orderBy: { lsSeats: "desc" } }).catch(() => []),
   ]);
 
   const latestYear = history[history.length - 1]?.year ?? 2024;

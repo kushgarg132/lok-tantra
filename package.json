@@ -5,7 +5,7 @@
   "description": "The operating system for understanding Indian democracy — an interactive civic intelligence platform",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",

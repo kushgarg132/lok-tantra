@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CitizenActionPage() {
-  const actions = await prisma.citizenAction.findMany({ orderBy: { title: "asc" } });
+  const actions = await prisma.citizenAction.findMany({ orderBy: { title: "asc" } }).catch(() => []);
 
   return (
     <div className="min-h-screen">

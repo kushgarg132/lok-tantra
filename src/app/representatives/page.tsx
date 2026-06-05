@@ -15,7 +15,7 @@ export default async function RepresentativesPage() {
   const states = await prisma.stateUT.findMany({
     where: { assemblySeats: { gt: 0 } },
     orderBy: { name: "asc" },
-  });
+  }).catch(() => []);
 
   const stateNames = states.map((s) => s.name);
 

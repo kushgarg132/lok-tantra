@@ -8,11 +8,13 @@ export const metadata: Metadata = {
     "Interactive visualization of India's governance hierarchy — from the people to local government",
 };
 
+export const revalidate = 3600;
+
 export default async function PowerStructurePage() {
   const institutions = await prisma.institution.findMany({
     include: { children: { select: { slug: true } } },
     orderBy: { name: "asc" },
-  });
+  }).catch(() => [] as Awaited<ReturnType<typeof prisma.institution.findMany<{ include: { children: { select: { slug: true } } } }>>>);
 
   const nodes = institutions.map((inst) => ({
     id: inst.slug,

@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default async function PartiesPage() {
   const [parties, ideologySpectrum] = await Promise.all([
-    prisma.politicalParty.findMany({ orderBy: { name: "asc" } }),
-    prisma.ideologyPosition.findMany({ orderBy: { order: "asc" } }),
+    prisma.politicalParty.findMany({ orderBy: { name: "asc" } }).catch(() => []),
+    prisma.ideologyPosition.findMany({ orderBy: { order: "asc" } }).catch(() => []),
   ]);
 
   return (

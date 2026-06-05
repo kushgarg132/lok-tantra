@@ -12,12 +12,12 @@ export const metadata: Metadata = {
 
 export default async function JudiciaryPage() {
   const [courts, cases, writs] = await Promise.all([
-    prisma.court.findMany({ orderBy: { type: "asc" } }),
+    prisma.court.findMany({ orderBy: { type: "asc" } }).catch(() => []),
     prisma.landmarkCase.findMany({
       include: { articlesInterpreted: true },
       orderBy: { year: "asc" },
-    }),
-    prisma.writ.findMany(),
+    }).catch(() => []),
+    prisma.writ.findMany().catch(() => []),
   ]);
 
   return (
