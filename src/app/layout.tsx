@@ -22,6 +22,12 @@ export const metadata: Metadata = {
     "UPSC",
     "civic education",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
