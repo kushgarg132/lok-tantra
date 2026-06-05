@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useStore } from "@/store/useStore";
 import { NAVIGATION } from "@/lib/constants";
+import UserMenu from "@/components/auth/UserMenu";
 
 export function Header() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -117,6 +118,9 @@ export function Header() {
                 </svg>
               )}
             </button>
+
+            {/* User account menu */}
+            <UserMenu />
 
             {/* Mobile Menu */}
             <button

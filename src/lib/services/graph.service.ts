@@ -1,12 +1,23 @@
 import { getNeo4jDriver } from "../neo4j/driver";
 import neo4j from "neo4j-driver";
 
-// Simple in-memory cache for query optimization
-const queryCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes cache
+const CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes — graph structure rarely changes
+const CACHE_MAX_SIZE = 500;           // LRU cap: evict oldest when exceeded
+
+interface CacheEntry { data: unknown[]; timestamp: number }
+const queryCache = new Map<string, CacheEntry>();
+
+function cacheSet(key: string, data: unknown[]): void {
+  if (queryCache.size >= CACHE_MAX_SIZE) {
+    // Evict the oldest entry (Map preserves insertion order)
+    queryCache.delete(queryCache.keys().next().value as string);
+  }
+  queryCache.set(key, { data, timestamp: Date.now() });
+}
 
 interface GraphQueryOptions {
   depth?: number;
+  maxHops?: number;
   direction?: "OUTGOING" | "INCOMING" | "BOTH";
   skipCache?: boolean;
 }
@@ -27,6 +38,7 @@ export class GraphService {
       if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
         return cached.data as T[];
       }
+      queryCache.delete(cacheKey); // expired — remove before re-fetching
     }
 
     const driver = getNeo4jDriver();
@@ -52,7 +64,7 @@ export class GraphService {
         return obj;
       });
 
-      queryCache.set(cacheKey, { data: serialized, timestamp: Date.now() });
+      cacheSet(cacheKey, serialized);
       return serialized as T[];
     } catch (error) {
       console.error("Graph query failed:", error);
@@ -134,11 +146,13 @@ export class GraphService {
 
   /**
    * Shortest Path Pathfinding
+   * maxHops defaults to 6 — prevents unbounded traversal across the full graph.
    */
   static async getShortestPath(startId: string, endId: string, options: GraphQueryOptions = {}) {
+    const maxHops = Math.min(options.maxHops ?? 6, 10); // hard ceiling of 10
     const cypher = `
       MATCH (start {id: $startId}), (end {id: $endId})
-      MATCH path = shortestPath((start)-[*]-(end))
+      MATCH path = shortestPath((start)-[*..${maxHops}]-(end))
       RETURN path
     `;
     return this.executeQuery(cypher, { startId, endId }, options.skipCache);

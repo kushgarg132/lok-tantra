@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ARTICLES_DATA, ArticleData } from "@/data/constitution/articles-data";
+import FlagContent from "@/components/moderation/FlagContent";
 
 const CATEGORY_LABELS: Record<string, string> = {
   fundamental_rights: "Fundamental Rights",
@@ -134,6 +135,14 @@ function ArticleCard({ article, isExpanded, onToggle }: ArticleCardProps) {
               </div>
             </div>
           )}
+
+          <div className="flex justify-end pt-1">
+            <FlagContent
+              contentType="constitution_article"
+              contentId={`article-${article.number}`}
+              contentSnippet={article.title}
+            />
+          </div>
         </div>
       )}
     </div>

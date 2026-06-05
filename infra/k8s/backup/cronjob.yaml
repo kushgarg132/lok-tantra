@@ -1,0 +1,107 @@
+# PostgreSQL backup job — runs daily at 02:00 IST (20:30 UTC)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: loktantra
+  labels:
+    app.kubernetes.io/part-of: loktantra
+    component: backup
+spec:
+  schedule: "30 20 * * *"
+  timeZone: "Asia/Kolkata"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit:     3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            component: backup
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser:    999
+
+          containers:
+            - name: pg-backup
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  DATE=$(date +%Y-%m-%d_%H-%M-%S)
+                  FILENAME="loktantra_${DATE}.sql.gz"
+
+                  echo "Starting backup: ${FILENAME}"
+
+                  # Dump and stream-compress directly to GCS
+                  pg_dump "$DATABASE_URL" \
+                    --no-password \
+                    --format=custom \
+                    --compress=9 \
+                    --verbose \
+                  | gzip \
+                  | gsutil cp - "gs://${BACKUP_BUCKET}/postgres/${FILENAME}"
+
+                  echo "Backup complete: gs://${BACKUP_BUCKET}/postgres/${FILENAME}"
+
+                  # Prune backups older than 30 days
+                  gsutil -m rm -f "gs://${BACKUP_BUCKET}/postgres/$(date -d '30 days ago' +%Y-%m-%d)*.sql.gz" 2>/dev/null || true
+
+                  echo "Pruning complete"
+
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: loktantra-secrets
+                      key:  DATABASE_URL
+                - name: BACKUP_BUCKET
+                  value: loktantra-backups-prod
+
+              resources:
+                requests: { cpu: 100m, memory: 128Mi }
+                limits:   { cpu: 500m, memory: 512Mi }
+---
+# Weekly full logical backup + schema dump
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-schema-backup
+  namespace: loktantra
+spec:
+  schedule: "0 19 * * 0"   # Sundays 00:30 IST
+  timeZone: "Asia/Kolkata"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: schema-backup
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  DATE=$(date +%Y-%m-%d)
+                  pg_dump "$DATABASE_URL" --schema-only \
+                  | gzip \
+                  | gsutil cp - "gs://${BACKUP_BUCKET}/schema/loktantra_schema_${DATE}.sql.gz"
+                  echo "Schema backup done"
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: loktantra-secrets
+                      key:  DATABASE_URL
+                - name: BACKUP_BUCKET
+                  value: loktantra-backups-prod
+              resources:
+                requests: { cpu: 50m,  memory: 64Mi }
+                limits:   { cpu: 200m, memory: 256Mi }

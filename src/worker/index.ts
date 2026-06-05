@@ -7,133 +7,159 @@ import { IndiaCodeIngestor } from "../lib/etl/ingestors/india-code.ingestor";
 import { SupremeCourtIngestor } from "../lib/etl/ingestors/supreme-court.ingestor";
 import { ingestEntityMedia, refreshStaleAssets } from "../lib/media/ingestion";
 import type { IngestJobData } from "../lib/media/types";
+import { createLogger } from "../lib/observability/logger";
+import { withJobInstrumentation } from "../lib/observability/instrumentation";
 
-console.log("Starting LokTantra ETL Worker Process...");
+const log = createLogger("WORKER");
+log.info("Starting LokTantra ETL Worker Process");
 
-// 1. API Fetch Worker
+// ── 1. API Fetch Worker ──────────────────────────────────────────────────────
 const apiFetchWorker = new Worker(
   "api-fetch",
   async (job) => {
-    console.log(`[API-FETCH] Processing job ${job.id}: ${job.name}`);
-    
     if (job.name === "prs-mp-track") {
-      const ingestor = new PRSIngestor();
-      await ingestor.processMPPerformance(job.data.url);
-      return { success: true, processed: job.data.url };
+      return withJobInstrumentation(
+        async () => {
+          const ingestor = new PRSIngestor();
+          await ingestor.processMPPerformance(job.data.url);
+          return { success: true };
+        },
+        { source: "PRS_INDIA", jobId: job.id },
+      );
     }
 
     if (job.name === "india-code-act") {
-      const ingestor = new IndiaCodeIngestor();
-      await ingestor.processActAPI(job.data.actId);
-      return { success: true };
+      return withJobInstrumentation(
+        async () => {
+          const ingestor = new IndiaCodeIngestor();
+          await ingestor.processActAPI(job.data.actId);
+          return { success: true };
+        },
+        { source: "INDIA_CODE_API", jobId: job.id },
+      );
     }
 
     if (job.name === "dummy-job") {
-      console.log("[API-FETCH] Executing dummy job payload:", job.data);
+      log.info("Executing dummy job", { payload: job.data }, { jobId: job.id });
       await new Promise((resolve) => setTimeout(resolve, 2000));
       return { success: true, processed: job.data };
     }
 
-    throw new Error(`Unknown job name: ${job.name}`);
+    throw new Error(`Unknown api-fetch job: ${job.name}`);
   },
-  { connection: redisConnection, concurrency: 5 }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  { connection: redisConnection as any, concurrency: 5 },
 );
 
-// 2. HTML Scraper Worker
+// ── 2. HTML Scraper Worker ───────────────────────────────────────────────────
 const scrapeHtmlWorker = new Worker(
   "scrape-html",
   async (job) => {
-    console.log(`[SCRAPE] Processing job ${job.id}: ${job.name}`);
-    
     if (job.name === "adr-myneta") {
-      const ingestor = new ADRIngestor();
-      await ingestor.processCandidatePage(job.data.url);
-      return { success: true };
+      return withJobInstrumentation(
+        async () => {
+          const ingestor = new ADRIngestor();
+          await ingestor.processCandidatePage(job.data.url);
+          return { success: true };
+        },
+        { source: "ADR_MYNETA", jobId: job.id },
+      );
     }
 
     if (job.name === "eci-results") {
-      const ingestor = new ECIIngestor();
-      await ingestor.processConstituencyResults(job.data.url, job.data.year, job.data.type);
-      return { success: true };
+      return withJobInstrumentation(
+        async () => {
+          const ingestor = new ECIIngestor();
+          await ingestor.processConstituencyResults(job.data.url, job.data.year, job.data.type);
+          return { success: true };
+        },
+        { source: "ECI_PORTAL", jobId: job.id },
+      );
     }
 
-    throw new Error(`Unknown job name: ${job.name}`);
+    throw new Error(`Unknown scrape-html job: ${job.name}`);
   },
-  { connection: redisConnection, concurrency: 2 } // Lower concurrency for heavy Puppeteer
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  { connection: redisConnection as any, concurrency: 2 },
 );
 
-// 3. PDF OCR Worker
+// ── 3. PDF OCR Worker ────────────────────────────────────────────────────────
 const pdfOcrWorker = new Worker(
   "pdf-ocr",
   async (job) => {
-    console.log(`[OCR] Processing job ${job.id}: ${job.name}`);
-    
     if (job.name === "supreme-court-judgment") {
-      const ingestor = new SupremeCourtIngestor();
-      await ingestor.processJudgmentPDF(job.data.pdfUrl, job.data.caseName, job.data.year, job.data.citation);
-      return { success: true };
+      return withJobInstrumentation(
+        async () => {
+          const ingestor = new SupremeCourtIngestor();
+          await ingestor.processJudgmentPDF(
+            job.data.pdfUrl, job.data.caseName, job.data.year, job.data.citation,
+          );
+          return { success: true };
+        },
+        { source: "SUPREME_COURT", jobId: job.id },
+      );
     }
 
-    throw new Error(`Unknown job name: ${job.name}`);
+    throw new Error(`Unknown pdf-ocr job: ${job.name}`);
   },
-  { connection: redisConnection, concurrency: 1 } // CPU bound, limit to 1 per core
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  { connection: redisConnection as any, concurrency: 1 },
 );
 
-// 4. Image Ingest Worker
+// ── 4. Image Ingest Worker ───────────────────────────────────────────────────
 const imageIngestWorker = new Worker(
   "image-ingest",
   async (job) => {
-    console.log(`[IMAGE] Processing job ${job.id}: ${job.name}`);
-
     if (job.name === "ingest-entity") {
       const data = job.data as IngestJobData;
-      const result = await ingestEntityMedia(data);
-      if (!result.success) {
-        console.warn(`[IMAGE] No image found for ${data.entityType}:${data.entityId} — ${result.error}`);
-      }
-      return result;
+      return withJobInstrumentation(
+        async () => {
+          const result = await ingestEntityMedia(data);
+          if (!result.success) {
+            log.warn(`No image found for ${data.entityType}:${data.entityId}`, { error: result.error }, { jobId: job.id });
+          }
+          return result;
+        },
+        { source: "IMAGE_INGEST", jobId: job.id },
+      );
     }
 
     if (job.name === "refresh-stale") {
       const { olderThanDays = 30 } = job.data as { olderThanDays?: number };
-      return refreshStaleAssets(olderThanDays);
+      return withJobInstrumentation(
+        () => refreshStaleAssets(olderThanDays),
+        { source: "IMAGE_INGEST", jobId: job.id },
+      );
     }
 
-    throw new Error(`Unknown image-ingest job name: ${job.name}`);
+    throw new Error(`Unknown image-ingest job: ${job.name}`);
   },
-  {
-    connection: redisConnection,
-    concurrency: 3, // Limited: downloads + Sharp processing are I/O + CPU heavy
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  { connection: redisConnection as any, concurrency: 3 },
 );
 
-// Event Listeners for Observability
-apiFetchWorker.on("completed", (job) => {
-  console.log(`[API-FETCH] Job ${job.id} completed.`);
-});
+// ── Structured event logging for all workers ─────────────────────────────────
+for (const [worker, name] of [
+  [apiFetchWorker,    "api-fetch"   ],
+  [scrapeHtmlWorker,  "scrape-html" ],
+  [pdfOcrWorker,      "pdf-ocr"     ],
+  [imageIngestWorker, "image-ingest"],
+] as const) {
+  const wlog = createLogger(`QUEUE:${name}`);
+  worker.on("completed", (job)      => wlog.info("Job completed", { jobId: job.id,  jobName: job.name }));
+  worker.on("failed",    (job, err) => wlog.error("Job failed",   { jobId: job?.id, jobName: job?.name, error: err.message }));
+  worker.on("stalled",   (jobId)    => wlog.warn("Job stalled",   { jobId }));
+}
 
-apiFetchWorker.on("failed", (job, err) => {
-  console.error(`[API-FETCH] Job ${job?.id} failed:`, err.message);
-});
-
-imageIngestWorker.on("completed", (job, result) => {
-  const r = result as { success: boolean; assetId?: string };
-  if (r?.success) {
-    console.log(`[IMAGE] Job ${job.id} completed — asset ${r.assetId}`);
-  }
-});
-
-imageIngestWorker.on("failed", (job, err) => {
-  console.error(`[IMAGE] Job ${job?.id} failed:`, err.message);
-});
-
-// Graceful Shutdown Handler
+// ── Graceful Shutdown ────────────────────────────────────────────────────────
 process.on("SIGINT", async () => {
-  console.log("Shutting down workers gracefully...");
-  await apiFetchWorker.close();
-  await scrapeHtmlWorker.close();
-  await pdfOcrWorker.close();
-  await imageIngestWorker.close();
+  log.info("Shutting down workers gracefully");
+  await Promise.allSettled([
+    apiFetchWorker.close(),
+    scrapeHtmlWorker.close(),
+    pdfOcrWorker.close(),
+    imageIngestWorker.close(),
+  ]);
   redisConnection.disconnect();
   process.exit(0);
 });

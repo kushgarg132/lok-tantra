@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import type { AssistantMessage, Citation } from "@/lib/rag/types";
+import FlagContent from "@/components/moderation/FlagContent";
 
 // ─── Example queries ───────────────────────────────────────────────────────────
 const EXAMPLE_QUERIES = [
@@ -124,7 +125,7 @@ function parseInline(text: string): ReactNode {
 }
 
 // ─── Single chat message ───────────────────────────────────────────────────────
-function ChatBubble({ msg, onFollowUp }: { msg: AssistantMessage; onFollowUp: (q: string) => void }) {
+function ChatBubble({ msg, msgIndex, onFollowUp }: { msg: AssistantMessage; msgIndex: number; onFollowUp: (q: string) => void }) {
   const [showSources, setShowSources] = useState(false);
   const isUser = msg.role === "user";
 
@@ -199,20 +200,28 @@ function ChatBubble({ msg, onFollowUp }: { msg: AssistantMessage; onFollowUp: (q
           )}
         </div>
 
-        {/* Follow-up suggestions */}
-        {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {msg.suggestedFollowUps.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => onFollowUp(q)}
-                className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-saffron-300 dark:hover:border-saffron-700 transition-colors"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center justify-between mt-1 gap-2">
+          {/* Follow-up suggestions */}
+          {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {msg.suggestedFollowUps.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => onFollowUp(q)}
+                  className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-saffron-300 dark:hover:border-saffron-700 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+          <FlagContent
+            contentType="assistant_response"
+            contentId={`assistant-msg-${msgIndex}`}
+            contentSnippet={msg.content.slice(0, 200)}
+            className="ml-auto shrink-0"
+          />
+        </div>
       </div>
     </div>
   );
@@ -347,7 +356,7 @@ export function GovernanceAssistant() {
         ) : (
           <>
             {messages.map((msg, i) => (
-              <ChatBubble key={i} msg={msg} onFollowUp={handleFollowUp} />
+              <ChatBubble key={i} msg={msg} msgIndex={i} onFollowUp={handleFollowUp} />
             ))}
             {isLoading && <TypingIndicator />}
             <div ref={messagesEndRef} />

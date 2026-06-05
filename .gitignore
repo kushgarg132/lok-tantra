@@ -6,3 +6,13 @@ out/
 .env.production.local
 *.tsbuildinfo
 next-env.d.ts
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/terraform.tfvars
+
+# Generated secrets (never commit actual secrets)
+infra/k8s/02-secrets.yaml

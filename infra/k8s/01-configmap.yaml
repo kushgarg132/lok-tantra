@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loktantra-config
+  namespace: loktantra
+  labels:
+    app.kubernetes.io/part-of: loktantra
+data:
+  NODE_ENV:                production
+  NEXT_TELEMETRY_DISABLED: "1"
+  PORT:                    "3000"
+  LOG_LEVEL:               info
+
+  # Redis config (host/port overridden by Cloud Memorystore secret)
+  REDIS_MAX_RETRIES:       "3"
+  REDIS_CONNECT_TIMEOUT:   "5000"
+
+  # Rate limiting (per minute defaults; role multipliers applied in code)
+  RATE_LIMIT_AI:           "10"
+  RATE_LIMIT_API:          "200"
+  RATE_LIMIT_SEARCH:       "60"
+
+  # BullMQ concurrency per worker pod
+  WORKER_CONCURRENCY_API_FETCH: "5"
+  WORKER_CONCURRENCY_SCRAPE:    "3"
+  WORKER_CONCURRENCY_PDF:       "2"
+  WORKER_CONCURRENCY_IMAGE:     "4"
+
+  # Observability
+  METRICS_INTERVAL_MS: "15000"
+  ALERT_SLACK_ENABLED: "true"

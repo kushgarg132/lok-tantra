@@ -1,0 +1,102 @@
+# Prometheus ServiceMonitor — scrapes /api/metrics from app pods
+# Requires: kube-prometheus-stack or prometheus-operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: loktantra-app
+  namespace: loktantra
+  labels:
+    app:     loktantra-app
+    release: kube-prometheus-stack   # must match Prometheus operator selector
+spec:
+  selector:
+    matchLabels:
+      app: loktantra-app
+  endpoints:
+    - port:          http
+      path:          /api/metrics
+      interval:      30s
+      scrapeTimeout: 10s
+      scheme:        http
+---
+# PrometheusRule — alert rules for LokTantra
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: loktantra-alerts
+  namespace: loktantra
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: loktantra.availability
+      interval: 30s
+      rules:
+        - alert: LokTantraDown
+          expr: up{job="loktantra-app"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team:     platform
+          annotations:
+            summary:     "LokTantra app is down"
+            description: "{{ $labels.instance }} has been unreachable for 2 minutes"
+
+        - alert: LokTantraHighErrorRate
+          expr: |
+            rate(http_requests_total{job="loktantra-app",status=~"5.."}[5m])
+            / rate(http_requests_total{job="loktantra-app"}[5m]) > 0.05
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Error rate above 5%"
+
+        - alert: LokTantraHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              rate(http_request_duration_seconds_bucket{job="loktantra-app"}[5m])
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "p95 latency above 2s"
+
+    - name: loktantra.workers
+      rules:
+        - alert: BullMQQueueDepthHigh
+          expr: redis_list_length{list=~"bull:.+:wait"} > 100
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "BullMQ queue {{ $labels.list }} depth > 100"
+
+        - alert: BullMQWorkerDown
+          expr: up{job="loktantra-worker"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "BullMQ worker is down"
+
+    - name: loktantra.database
+      rules:
+        - alert: DatabaseConnectionPoolExhausted
+          expr: pg_pool_size - pg_pool_available_connections < 5
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL connection pool nearly exhausted"
+
+    - name: loktantra.redis
+      rules:
+        - alert: RedisMemoryHigh
+          expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis memory usage above 85%"

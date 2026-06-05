@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: loktantra-app-pdb
+  namespace: loktantra
+spec:
+  # Keep at least 2 pods running during voluntary disruptions
+  # (node upgrades, maintenance windows)
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: loktantra-app

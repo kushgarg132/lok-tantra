@@ -1,0 +1,57 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: loktantra-app-hpa
+  namespace: loktantra
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: loktantra-app
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    # Scale on CPU utilization (primary signal)
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type:               AverageUtilization
+          averageUtilization: 60
+
+    # Scale on memory pressure (secondary signal)
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type:               AverageUtilization
+          averageUtilization: 75
+
+    # Scale on request rate (custom metric via Prometheus adapter)
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type:         AverageValue
+          averageValue: "50"
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60    # React quickly to traffic spikes
+      policies:
+        - type:          Pods
+          value:         4
+          periodSeconds: 60
+        - type:          Percent
+          value:         100
+          periodSeconds: 60
+      selectPolicy: Max
+
+    scaleDown:
+      stabilizationWindowSeconds: 300   # Be conservative scaling down
+      policies:
+        - type:          Pods
+          value:         2
+          periodSeconds: 120
+      selectPolicy: Min

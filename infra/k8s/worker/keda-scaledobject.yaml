@@ -1,0 +1,75 @@
+# KEDA ScaledObject — scales workers based on BullMQ queue depth in Redis
+# Install KEDA: https://keda.sh/docs/latest/deploy/
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-auth
+  namespace: loktantra
+spec:
+  secretTargetRef:
+    - parameter: address
+      name:      loktantra-secrets
+      key:       REDIS_URL
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: loktantra-worker-scaler
+  namespace: loktantra
+spec:
+  scaleTargetRef:
+    name: loktantra-worker
+  minReplicaCount:    2
+  maxReplicaCount:    12
+  pollingInterval:    15    # Check queue depth every 15s
+  cooldownPeriod:     120   # Wait 2 min before scaling down
+
+  # Scale up if any queue exceeds threshold
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-auth
+      metadata:
+        listName:     bull:api-fetch:wait
+        listLength:   "10"     # 1 extra pod per 10 waiting jobs
+        enableTLS:    "true"
+
+    - type: redis
+      authenticationRef:
+        name: redis-auth
+      metadata:
+        listName:     bull:scrape-html:wait
+        listLength:   "5"
+        enableTLS:    "true"
+
+    - type: redis
+      authenticationRef:
+        name: redis-auth
+      metadata:
+        listName:     bull:pdf-ocr:wait
+        listLength:   "3"      # PDF jobs are heavier; scale sooner
+        enableTLS:    "true"
+
+    - type: redis
+      authenticationRef:
+        name: redis-auth
+      metadata:
+        listName:     bull:image-ingest:wait
+        listLength:   "8"
+        enableTLS:    "true"
+
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 30
+          policies:
+            - type: Pods
+              value: 3
+              periodSeconds: 30
+        scaleDown:
+          stabilizationWindowSeconds: 180
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60

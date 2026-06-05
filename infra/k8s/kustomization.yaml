@@ -1,0 +1,27 @@
+# Apply order: namespace → config → network → app → worker → ingress → monitoring
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: loktantra
+
+resources:
+  - 00-namespace.yaml
+  - 01-configmap.yaml
+  - 03-network-policy.yaml
+  - app/deployment.yaml
+  - app/service.yaml
+  - app/hpa.yaml
+  - app/pdb.yaml
+  - worker/deployment.yaml
+  - worker/keda-scaledobject.yaml
+  - ingress/ingress.yaml
+  - ingress/certificate.yaml
+  - monitoring/servicemonitor.yaml
+  - backup/cronjob.yaml
+
+# Override image tags during deploy (set via CI/CD with --set image=...:sha-xxx)
+images:
+  - name: ghcr.io/loktantra/loktantra/app
+    newTag: latest
+  - name: ghcr.io/loktantra/loktantra/worker
+    newTag: latest

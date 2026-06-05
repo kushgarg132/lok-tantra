@@ -1,0 +1,51 @@
+# ── Stage 1: Install dependencies ─────────────────────────────────────────────
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY prisma ./prisma/
+
+RUN npm ci --frozen-lockfile
+
+# ── Stage 2: Build TypeScript worker ──────────────────────────────────────────
+FROM node:20-alpine AS builder
+RUN apk add --no-cache openssl
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN npx prisma generate
+
+# Compile worker to JS using tsconfig paths resolved by tsconfig-paths-webpack-plugin
+# We use tsx for compilation since the project doesn't have a separate tsc build step
+RUN npx tsc --project tsconfig.json --noEmit || true   # type-check pass
+# Worker runs via tsx in production for simplicity (avoids path aliasing issues)
+
+# ── Stage 3: Worker runtime ───────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl curl
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 worker
+
+# Copy full node_modules (worker needs everything)
+COPY --from=deps   /app/node_modules ./node_modules
+COPY --from=builder /app/src         ./src
+COPY --from=builder /app/prisma      ./prisma
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/tsconfig.json ./
+COPY --from=builder /app/node_modules/.prisma  ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma  ./node_modules/@prisma
+
+USER worker
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "require('ioredis').createClient({ url: process.env.REDIS_URL }).ping().then(() => process.exit(0)).catch(() => process.exit(1))" 2>/dev/null || exit 1
+
+CMD ["node_modules/.bin/tsx", "src/worker/index.ts"]

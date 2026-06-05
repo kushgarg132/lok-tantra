@@ -1,0 +1,102 @@
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       loktantra
+      POSTGRES_USER:     loktantra
+      POSTGRES_PASSWORD: loktantra_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U loktantra"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+      --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:     ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout:  3s
+      retries:  5
+
+  # ── Next.js web application ─────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL:     postgresql://loktantra:loktantra_dev@postgres:5432/loktantra
+      REDIS_URL:        redis://redis:6379
+      NEXTAUTH_URL:     http://localhost:3000
+      NEXTAUTH_SECRET:  dev-secret-change-in-production
+      NODE_ENV:         development
+    env_file:
+      - .env.local
+    volumes:
+      - ./public:/app/public:ro
+
+  # ── BullMQ worker ───────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://loktantra:loktantra_dev@postgres:5432/loktantra
+      REDIS_URL:    redis://redis:6379
+      NODE_ENV:     development
+    env_file:
+      - .env.local
+
+  # ── ElasticSearch (optional, for full-text search) ──────────────────────────
+  elasticsearch:
+    image: elasticsearch:8.14.0
+    restart: unless-stopped
+    environment:
+      discovery.type:         single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS:           "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test:     ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout:  10s
+      retries:  5
+    profiles: ["search"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  es_data:

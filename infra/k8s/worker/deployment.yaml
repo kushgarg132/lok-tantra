@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loktantra-worker
+  namespace: loktantra
+  labels:
+    app: loktantra-worker
+    app.kubernetes.io/part-of: loktantra
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: loktantra-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge:       1
+  template:
+    metadata:
+      labels:
+        app: loktantra-worker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port:   "9090"
+        prometheus.io/path:   "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser:    1001
+        runAsGroup:   1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: loktantra-worker
+
+      terminationGracePeriodSeconds: 120   # Allow in-flight jobs to finish
+
+      containers:
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11
+          args:
+            - --port=5432
+            - --structured-logs
+            - $(INSTANCE_CONNECTION_NAME)
+          env:
+            - name: INSTANCE_CONNECTION_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: loktantra-secrets
+                  key: CLOUD_SQL_INSTANCE
+          securityContext:
+            runAsNonRoot: true
+            runAsUser:    65532
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 200m, memory: 256Mi }
+
+        - name: worker
+          image: ghcr.io/loktantra/loktantra/worker:latest
+          imagePullPolicy: Always
+
+          envFrom:
+            - configMapRef:
+                name: loktantra-config
+            - secretRef:
+                name: loktantra-secrets
+
+          # Graceful shutdown: BullMQ worker drains current job
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+
+          resources:
+            requests:
+              cpu:    200m
+              memory: 256Mi
+            limits:
+              cpu:    "2"
+              memory: 2Gi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: loktantra-worker-pdb
+  namespace: loktantra
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: loktantra-worker

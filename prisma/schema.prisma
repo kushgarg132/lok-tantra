@@ -7,6 +7,140 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── ENUMS ───────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  RESEARCHER
+  MODERATOR
+  ADMIN
+}
+
+enum FlagReason {
+  INACCURATE
+  POLITICALLY_BIASED
+  MISLEADING
+  MISSING_SOURCE
+  OUTDATED
+  INAPPROPRIATE
+  OTHER
+}
+
+enum FlagStatus {
+  PENDING
+  REVIEWING
+  RESOLVED_VALID
+  RESOLVED_INVALID
+  ESCALATED
+}
+
+// ─── AUTH (NextAuth / Auth.js) ───────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // bcryptjs hash — null for OAuth-only users
+  role          UserRole  @default(USER)
+  accounts      Account[]
+  sessions      Session[]
+  flags         ContentFlag[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ─── MODERATION ───────────────────────────────────────────────
+
+model ContentFlag {
+  id          String     @id @default(cuid())
+  contentType String     // "ai-response" | "article" | "representative" | "search-result"
+  contentId   String     // ID or hash of flagged content
+  reason      FlagReason
+  details     String?
+  status      FlagStatus @default(PENDING)
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reviewedBy  String?
+  reviewNote  String?
+  ipAddress   String?
+  contentSnippet String? // First 500 chars of flagged content (for review)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([contentType, contentId])
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([reviewedBy])
+}
+
+// ─── AUDIT ────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g., "auth.signin", "admin.update", "flag.create"
+  resource   String?  // resource type (e.g., "User", "ContentFlag")
+  resourceId String?
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress  String?
+  userAgent  String?
+  payload    Json?    // sanitized request context
+  result     String   // "success" | "failure" | "blocked"
+  reason     String?  // why blocked/failed
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@index([resource, resourceId])
+  @@index([result, createdAt])
+}
+
 // ─── MEDIA ASSETS ───────────────────────────────────────────
 
 model MediaAsset {
@@ -118,6 +252,7 @@ model ConstitutionArticle {
   updatedAt       DateTime         @updatedAt
 
   @@index([category])
+  @@index([partId])
 }
 
 model Amendment {
@@ -171,6 +306,7 @@ model Institution {
 
   @@index([branch, level])
   @@index([slug])
+  @@index([parentId])
 }
 
 model Position {
@@ -187,6 +323,8 @@ model Position {
   currentHolder        Person?      @relation("CurrentPosition", fields: [currentHolderId], references: [id])
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+
+  @@index([institutionId])
 }
 
 // ─── PEOPLE & TEMPORAL ROLES ─────────────────────────────────
@@ -229,30 +367,34 @@ model Person {
 model PersonPartyHistory {
   id        String         @id @default(cuid())
   personId  String
-  person    Person         @relation(fields: [personId], references: [id])
+  person    Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
   partyId   String
-  party     PoliticalParty @relation(fields: [partyId], references: [id])
+  party     PoliticalParty @relation(fields: [partyId], references: [id], onDelete: Restrict)
   validFrom DateTime
   validTo   DateTime?
 
   @@index([personId])
   @@index([partyId])
+  @@index([personId, validFrom, validTo])
 }
 
 model PersonRole {
   id            String       @id @default(cuid())
   personId      String
-  person        Person       @relation(fields: [personId], references: [id])
+  person        Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
   title         String
   institutionId String?
-  institution   Institution? @relation(fields: [institutionId], references: [id])
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
   committeeId   String?
-  committee     Committee?   @relation(fields: [committeeId], references: [id])
+  committee     Committee?   @relation(fields: [committeeId], references: [id], onDelete: SetNull)
   validFrom     DateTime
   validTo       DateTime?
 
   @@index([personId])
   @@index([validFrom, validTo])
+  @@index([personId, validFrom, validTo])
+  @@index([institutionId])
+  @@index([committeeId])
 }
 
 // ─── POLITICAL PARTIES ───────────────────────────────────────
@@ -312,7 +454,7 @@ model District {
   state       StateUT   @relation(fields: [stateId], references: [id])
   formedOn    DateTime? // [NEW] Temporal
   abolishedOn DateTime? // [NEW] Temporal
-  geom        Unsupported("geometry")? // [NEW] PostGIS
+  // geom     Unsupported("geometry")? // PostGIS — enable in prod with postgis/postgis image
   pinCodes    PinCode[]
   createdAt   DateTime  @default(now())
 
@@ -331,7 +473,7 @@ model Constituency {
   delimitation    Int?                // [NEW] Temporal
   validFrom       DateTime?           // [NEW] Temporal
   validTo         DateTime?           // [NEW] Temporal
-  geom            Unsupported("geometry")? // [NEW] PostGIS
+  // geom         Unsupported("geometry")? // PostGIS — enable in prod with postgis/postgis image
   pinCodes        PinCode[]
   electionResults ElectionResult[]
   elections       ElectionCandidate[] // [NEW] Candidate Link
@@ -364,6 +506,7 @@ model ElectionResult {
 
   @@index([year, type])
   @@index([constituencyId])
+  @@index([winnerId])
 }
 
 // Legacy Summary model
@@ -424,19 +567,20 @@ model Election {
 model ElectionCandidate {
   id             String         @id @default(cuid())
   electionId     String
-  election       Election       @relation(fields: [electionId], references: [id])
+  election       Election       @relation(fields: [electionId], references: [id], onDelete: Restrict)
   constituencyId String
-  constituency   Constituency   @relation(fields: [constituencyId], references: [id])
+  constituency   Constituency   @relation(fields: [constituencyId], references: [id], onDelete: Restrict)
   personId       String
-  person         Person         @relation(fields: [personId], references: [id])
+  person         Person         @relation(fields: [personId], references: [id], onDelete: Restrict)
   partyId        String
-  party          PoliticalParty @relation(fields: [partyId], references: [id])
+  party          PoliticalParty @relation(fields: [partyId], references: [id], onDelete: Restrict)
   votes          Int
   isWinner       Boolean        @default(false)
 
   @@index([electionId])
   @@index([constituencyId])
   @@index([personId])
+  @@index([partyId])
 }
 
 // ─── JUDICIARY ───────────────────────────────────────────────
@@ -466,12 +610,15 @@ model LandmarkCase {
   year                Int
   dateDecided         DateTime?             // [NEW] Temporal
   courtId             String
-  court               Court                 @relation(fields: [courtId], references: [id])
+  court               Court                 @relation(fields: [courtId], references: [id], onDelete: Restrict)
   summary             String
   significance        String
   impact              String?
   articlesInterpreted ConstitutionArticle[] @relation("ArticleCases")
   createdAt           DateTime              @default(now())
+
+  @@index([courtId])
+  @@index([year])
 }
 
 // ─── LEGISLATION ─────────────────────────────────────────────
@@ -522,8 +669,10 @@ model Department {
   id         String   @id @default(cuid())
   name       String
   ministryId String
-  ministry   Ministry @relation(fields: [ministryId], references: [id])
+  ministry   Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
+
+  @@index([ministryId])
 }
 
 model Committee {
@@ -669,4 +818,54 @@ model IdeologyPosition {
   parties     String[]
   description String
   order       Int      @default(0)
+}
+
+// ─── OBSERVABILITY ───────────────────────────────────────────
+
+model ScraperRun {
+  id               String    @id @default(cuid())
+  source           String    // "ADR_MYNETA" | "ECI_PORTAL" | "PRS_INDIA" | "SUPREME_COURT" | "INDIA_CODE_API" | "IMAGE_INGEST"
+  jobId            String?
+  status           String    // "running" | "success" | "failed" | "timeout"
+  startedAt        DateTime
+  finishedAt       DateTime?
+  durationMs       Int?
+  recordsProcessed Int       @default(0)
+  recordsFailed    Int       @default(0)
+  errorMessage     String?
+  errorStack       String?
+  httpStatus       Int?
+  retryCount       Int       @default(0)
+
+  @@index([source, startedAt])
+  @@index([status, startedAt])
+}
+
+model ObservabilityLog {
+  id         String   @id @default(cuid())
+  level      String   // "debug" | "info" | "warn" | "error"
+  source     String   // e.g., "ETL:ADR", "QUEUE:api-fetch"
+  message    String
+  context    Json?
+  traceId    String?
+  jobId      String?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([level, createdAt])
+  @@index([source, createdAt])
+  @@index([traceId])
+}
+
+model AlertEvent {
+  id         String    @id @default(cuid())
+  rule       String
+  severity   String    // "critical" | "warning" | "info"
+  message    String
+  context    Json?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([rule, createdAt])
+  @@index([severity, resolvedAt])
 }
