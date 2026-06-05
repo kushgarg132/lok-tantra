@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@layer base {
+  :root {
+    --color-bg: 255 255 255;
+    --color-bg-secondary: 248 250 252;
+    --color-bg-tertiary: 241 245 249;
+    --color-text: 15 23 42;
+    --color-text-secondary: 71 85 105;
+    --color-text-tertiary: 148 163 184;
+    --color-border: 226 232 240;
+    --color-accent: 249 115 22;
+    --color-accent-secondary: 0 0 128;
+    --color-accent-tertiary: 4 106 56;
+  }
+
+  .dark {
+    --color-bg: 15 23 42;
+    --color-bg-secondary: 30 41 59;
+    --color-bg-tertiary: 51 65 85;
+    --color-text: 248 250 252;
+    --color-text-secondary: 203 213 225;
+    --color-text-tertiary: 148 163 184;
+    --color-border: 51 65 85;
+    --color-accent: 251 146 60;
+    --color-accent-secondary: 96 165 250;
+    --color-accent-tertiary: 52 211 153;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border)) transparent;
+  }
+
+  body {
+    @apply bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-50 antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50;
+  }
+
+  .glass-strong {
+    @apply bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-700;
+  }
+
+  .gradient-saffron {
+    @apply bg-gradient-to-r from-saffron-500 to-saffron-600;
+  }
+
+  .gradient-tricolor {
+    background: linear-gradient(135deg, #ff9933 0%, #ffffff 40%, #ffffff 60%, #138808 100%);
+  }
+
+  .gradient-hero {
+    @apply bg-gradient-to-br from-saffron-500 via-white to-chakra-500 dark:from-saffron-600 dark:via-slate-900 dark:to-chakra-600;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .card-interactive {
+    @apply card cursor-pointer hover:border-saffron-300 dark:hover:border-saffron-500 hover:shadow-lg transition-all duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-saffron {
+    @apply badge bg-saffron-100 text-saffron-700 dark:bg-saffron-900/30 dark:text-saffron-400;
+  }
+
+  .badge-navy {
+    @apply badge bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400;
+  }
+
+  .badge-chakra {
+    @apply badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
+  }
+
+  .section-heading {
+    @apply text-2xl md:text-3xl font-display font-bold tracking-tight;
+  }
+
+  .section-subheading {
+    @apply text-base md:text-lg text-slate-600 dark:text-slate-400 max-w-2xl;
+  }
+}

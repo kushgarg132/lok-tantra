@@ -1,0 +1,672 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── MEDIA ASSETS ───────────────────────────────────────────
+
+model MediaAsset {
+  id            String    @id @default(cuid())
+  entityType    String    // "person" | "party" | "institution" | "ministry" | "court" | "constituency"
+  entityId      String
+  mediaType     String    // "profile" | "thumbnail" | "logo" | "banner" | "map" | "portrait" | "symbol"
+
+  storageKey    String
+  publicUrl     String?
+  localPath     String?
+
+  width         Int?
+  height        Int?
+  format        String?
+  fileSize      Int?
+  checksum      String?
+
+  variants      Json?     // { thumb, avatar, card, original } — all CDN URLs
+
+  sourceUrl     String?
+  sourceDomain  String?
+  sourceTrust   String?   // "official_govt" | "official_party" | "official_institution" | "trusted_fallback"
+
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+
+  fetchedAt     DateTime?
+  verifiedAt    DateTime?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([entityType, entityId, mediaType])
+  @@index([entityType, entityId])
+  @@index([checksum])
+  @@index([isActive, entityType])
+}
+
+// ─── AUDIT, PROVENANCE & EVENT SOURCING [NEW] ───────────────
+
+model DataSource {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  url           String
+  lastFetchedAt DateTime?
+  status        String   @default("active")
+  fetchCount    Int      @default(0)
+  provenance    DataProvenance[]
+}
+
+model DataProvenance {
+  id            String     @id @default(cuid())
+  entityType    String
+  entityId      String
+  sourceId      String
+  source        DataSource @relation(fields: [sourceId], references: [id])
+  fetchedAt     DateTime
+  confidence    Float      @default(1.0)
+  verificationStatus String @default("PENDING") // [NEW] PENDING, VERIFIED, REJECTED
+  version       Int        @default(1)
+  rawData       Json?
+  createdAt     DateTime   @default(now())
+
+  @@index([entityType, entityId])
+  @@index([sourceId])
+}
+
+model EntityEvent {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  eventType   String
+  payload     Json
+  source      String
+  timestamp   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([timestamp])
+}
+
+// ─── CONSTITUTIONAL ENTITIES ─────────────────────────────────
+
+model ConstitutionPart {
+  id                   String                @id @default(cuid())
+  number               Float                 @unique
+  name                 String
+  articles             String
+  constitutionArticles ConstitutionArticle[]
+}
+
+model ConstitutionArticle {
+  id              String           @id @default(cuid())
+  number          String           @unique
+  title           String
+  text            String
+  explanation     String?
+  partId          String
+  part            ConstitutionPart @relation(fields: [partId], references: [id])
+  category        String
+  isRepealed      Boolean          @default(false)
+  insertedByAmend Int?
+  relatedArticles String[]
+  amendments      Amendment[]      @relation("ArticleAmendments")
+  cases           LandmarkCase[]   @relation("ArticleCases")
+  validFrom       DateTime?        // [NEW] Temporal
+  validTo         DateTime?        // [NEW] Temporal
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([category])
+}
+
+model Amendment {
+  id               String                @id @default(cuid())
+  number           Int                   @unique
+  year             Int
+  dateEnacted      DateTime?
+  description      String
+  fullText         String?
+  significance     String
+  articlesAffected ConstitutionArticle[] @relation("ArticleAmendments")
+  createdAt        DateTime              @default(now())
+}
+
+model Schedule {
+  id          String @id @default(cuid())
+  number      Int    @unique
+  title       String
+  description String
+  content     String
+}
+
+// ─── INSTITUTIONAL ENTITIES ──────────────────────────────────
+
+model Institution {
+  id                  String        @id @default(cuid())
+  slug                String        @unique
+  name                String        @unique
+  type                String
+  branch              String
+  level               String
+  parentId            String?
+  parent              Institution?  @relation("InstitutionTree", fields: [parentId], references: [id])
+  children            Institution[] @relation("InstitutionTree")
+  constitutionalBasis String?
+  description         String
+  powers              String[]
+  website             String?
+  logoUrl             String?
+  mediaUpdatedAt      DateTime?
+  established         String?
+  establishedOn       DateTime?     // [NEW] Temporal
+  abolishedOn         DateTime?     // [NEW] Temporal
+  appointedBy         String?
+  removableBy         String?
+  reportsTo           String?
+  positions           Position[]
+  roles               PersonRole[]  // [NEW] Temporal Link
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([branch, level])
+  @@index([slug])
+}
+
+model Position {
+  id                   String       @id @default(cuid())
+  title                String
+  institutionId        String
+  institution          Institution  @relation(fields: [institutionId], references: [id])
+  constitutionalBasis  String?
+  appointedBy          String?
+  removableBy          String?
+  tenure               String?
+  powers               String[]
+  currentHolderId      String?      @unique
+  currentHolder        Person?      @relation("CurrentPosition", fields: [currentHolderId], references: [id])
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+// ─── PEOPLE & TEMPORAL ROLES ─────────────────────────────────
+
+model Person {
+  id              String               @id @default(cuid())
+  name            String
+  designation     String?
+  dateOfBirth     DateTime?
+  gender          String?
+  education       String?
+  photoUrl        String?
+  thumbnailUrl    String?
+  mediaVerified   Boolean              @default(false)
+  mediaUpdatedAt  DateTime?
+  currentPosition Position?            @relation("CurrentPosition")
+  partyId         String?
+  party           PoliticalParty?      @relation(fields: [partyId], references: [id])
+  partyHistory    PersonPartyHistory[] // [NEW] Temporal Link
+  roles           PersonRole[]         // [NEW] Temporal Link
+  stateCode       String?
+  state           String?
+  constituency    String?
+  chamber         String?
+  level           String?
+  contact         Json?
+  profile         Json?
+  socialLinks     Json?                // [NEW] Facebook, Twitter, Instagram, Website
+  assets          Json?                // [NEW] Declared assets, liabilities
+  criminalCases   Json?                // [NEW] Declared criminal cases
+  electionResults ElectionResult[]     @relation("ElectionWinner")
+  elections       ElectionCandidate[]  // [NEW] Candidate Link
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([stateCode, chamber])
+  @@index([partyId])
+}
+
+model PersonPartyHistory {
+  id        String         @id @default(cuid())
+  personId  String
+  person    Person         @relation(fields: [personId], references: [id])
+  partyId   String
+  party     PoliticalParty @relation(fields: [partyId], references: [id])
+  validFrom DateTime
+  validTo   DateTime?
+
+  @@index([personId])
+  @@index([partyId])
+}
+
+model PersonRole {
+  id            String       @id @default(cuid())
+  personId      String
+  person        Person       @relation(fields: [personId], references: [id])
+  title         String
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  committeeId   String?
+  committee     Committee?   @relation(fields: [committeeId], references: [id])
+  validFrom     DateTime
+  validTo       DateTime?
+
+  @@index([personId])
+  @@index([validFrom, validTo])
+}
+
+// ─── POLITICAL PARTIES ───────────────────────────────────────
+
+model PoliticalParty {
+  id           String               @id @default(cuid())
+  name         String               @unique
+  abbreviation String               @unique
+  founded      Int?
+  foundedOn    DateTime?            // [NEW] Temporal
+  disbandedOn  DateTime?            // [NEW] Temporal
+  ideology     String[]
+  president    String?
+  headquarters String?
+  color        String
+  type         String
+  symbol       String?
+  logoUrl      String?
+  bannerUrl    String?
+  mediaUpdatedAt DateTime?
+  website      String?
+  members      Person[]
+  memberships  PersonPartyHistory[] // [NEW] Temporal Link
+  alliances    String[]
+  currentSeats Json?
+  history      String?
+  states       String[]
+  candidates   ElectionCandidate[]  // [NEW] Candidate Link
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+}
+
+// ─── ELECTIONS & GEOGRAPHY ───────────────────────────────────
+
+model StateUT {
+  id             String         @id @default(cuid())
+  name           String         @unique
+  code           String         @unique
+  type           String
+  capital        String
+  lsSeats        Int
+  rsSeats        Int
+  assemblySeats  Int
+  reservedSC     Int            @default(0)
+  reservedST     Int            @default(0)
+  formedOn       DateTime?      // [NEW] Temporal
+  abolishedOn    DateTime?      // [NEW] Temporal
+  districts      District[]     // [NEW] Relation
+  constituencies Constituency[] // [NEW] Relation
+  createdAt      DateTime       @default(now())
+}
+
+model District {
+  id          String    @id @default(cuid())
+  name        String
+  stateId     String
+  state       StateUT   @relation(fields: [stateId], references: [id])
+  formedOn    DateTime? // [NEW] Temporal
+  abolishedOn DateTime? // [NEW] Temporal
+  geom        Unsupported("geometry")? // [NEW] PostGIS
+  pinCodes    PinCode[]
+  createdAt   DateTime  @default(now())
+
+  @@index([stateId])
+}
+
+model Constituency {
+  id              String              @id @default(cuid())
+  name            String
+  number          Int?
+  type            String
+  stateCode       String
+  state           StateUT?            @relation(fields: [stateCode], references: [code]) // [NEW] Relation
+  reservedFor     String?
+  totalVoters     Int?
+  delimitation    Int?                // [NEW] Temporal
+  validFrom       DateTime?           // [NEW] Temporal
+  validTo         DateTime?           // [NEW] Temporal
+  geom            Unsupported("geometry")? // [NEW] PostGIS
+  pinCodes        PinCode[]
+  electionResults ElectionResult[]
+  elections       ElectionCandidate[] // [NEW] Candidate Link
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([name, stateCode, type])
+  @@index([stateCode, type])
+}
+
+// Legacy Election model (Preserved for compatibility)
+model ElectionResult {
+  id             String       @id @default(cuid())
+  year           Int
+  type           String
+  constituencyId String
+  constituency   Constituency @relation(fields: [constituencyId], references: [id])
+  winnerId       String
+  winner         Person       @relation("ElectionWinner", fields: [winnerId], references: [id])
+  winnerParty    String
+  winnerVotes    Int
+  runnerUpName   String?
+  runnerUpParty  String?
+  runnerUpVotes  Int?
+  totalVoters    Int?
+  votesPolled    Int?
+  turnout        Float?
+  margin         Int?
+  createdAt      DateTime     @default(now())
+
+  @@index([year, type])
+  @@index([constituencyId])
+}
+
+// Legacy Summary model
+model ElectionSummary {
+  id          String   @id @default(cuid())
+  year        Int
+  type        String
+  totalSeats  Int
+  majorWinner String
+  majorSeats  Int
+  turnout     Float?
+  createdAt   DateTime @default(now())
+
+  @@unique([year, type])
+}
+
+// Legacy Party model
+model PartyElectionResult {
+  id        String   @id @default(cuid())
+  year      Int
+  type      String
+  party     String
+  color     String
+  seats     Int
+  voteShare Float?
+  createdAt DateTime @default(now())
+
+  @@unique([year, type, party])
+  @@index([year, type])
+}
+
+// [NEW] PIN Code Mapping
+model PinCode {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  districtId     String?
+  district       District?    @relation(fields: [districtId], references: [id])
+  constituencyId String?
+  constituency   Constituency? @relation(fields: [constituencyId], references: [id])
+  
+  @@index([code])
+}
+
+// [NEW] Comprehensive Election Models
+model Election {
+  id         String              @id @default(cuid())
+  year       Int
+  type       String
+  startDate  DateTime?
+  endDate    DateTime?
+  totalSeats Int
+  turnout    Float?
+  candidates ElectionCandidate[]
+
+  @@unique([year, type])
+}
+
+model ElectionCandidate {
+  id             String         @id @default(cuid())
+  electionId     String
+  election       Election       @relation(fields: [electionId], references: [id])
+  constituencyId String
+  constituency   Constituency   @relation(fields: [constituencyId], references: [id])
+  personId       String
+  person         Person         @relation(fields: [personId], references: [id])
+  partyId        String
+  party          PoliticalParty @relation(fields: [partyId], references: [id])
+  votes          Int
+  isWinner       Boolean        @default(false)
+
+  @@index([electionId])
+  @@index([constituencyId])
+  @@index([personId])
+}
+
+// ─── JUDICIARY ───────────────────────────────────────────────
+
+model Court {
+  id           String         @id @default(cuid())
+  name         String         @unique
+  type         String
+  jurisdiction String?
+  stateCode    String?
+  established  Int?
+  establishedOn DateTime?     // [NEW] Temporal
+  judges       String?
+  basis        String?
+  description  String?
+  powers       String[]
+  logoUrl      String?
+  mediaUpdatedAt DateTime?
+  cases        LandmarkCase[]
+  createdAt    DateTime       @default(now())
+}
+
+model LandmarkCase {
+  id                  String                @id @default(cuid())
+  name                String
+  citation            String?
+  year                Int
+  dateDecided         DateTime?             // [NEW] Temporal
+  courtId             String
+  court               Court                 @relation(fields: [courtId], references: [id])
+  summary             String
+  significance        String
+  impact              String?
+  articlesInterpreted ConstitutionArticle[] @relation("ArticleCases")
+  createdAt           DateTime              @default(now())
+}
+
+// ─── LEGISLATION ─────────────────────────────────────────────
+
+model Bill {
+  id           String    @id @default(cuid())
+  title        String
+  type         String
+  introducedIn String
+  introducedBy String?
+  introducedOn DateTime?
+  status       String
+  summary      String?
+  fullTextUrl  String?
+  ministry     String?
+  actId        String?   @unique // [NEW] Relation
+  act          Act?      @relation(fields: [actId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, type])
+}
+
+model Act {
+  id        String   @id @default(cuid())
+  title     String
+  year      Int
+  enactedOn DateTime
+  bill      Bill?
+  createdAt DateTime @default(now())
+}
+
+// ─── MINISTRIES, COMMITTEES & BUREAUCRACY ────────────────────
+
+model Ministry {
+  id            String       @id @default(cuid())
+  name          String       @unique
+  department    String       // Legacy string
+  departments   Department[] // [NEW] Relation
+  logoUrl       String?
+  mediaUpdatedAt DateTime?
+  establishedOn DateTime?    // [NEW] Temporal
+  abolishedOn   DateTime?    // [NEW] Temporal
+  createdAt     DateTime     @default(now())
+}
+
+model Department {
+  id         String   @id @default(cuid())
+  name       String
+  ministryId String
+  ministry   Ministry @relation(fields: [ministryId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Committee {
+  id          String       @id @default(cuid())
+  name        String
+  type        String
+  formedOn    DateTime
+  dissolvedOn DateTime?
+  members     PersonRole[]
+  createdAt   DateTime     @default(now())
+}
+
+model BureaucraticLevel {
+  id          String   @id @default(cuid())
+  hierarchy   String
+  level       Int
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+
+  @@unique([hierarchy, level])
+  @@index([hierarchy])
+}
+
+// ─── GOVERNANCE PROCESSES ────────────────────────────────────
+
+model GovernanceProcess {
+  id                  String        @id @default(cuid())
+  slug                String        @unique
+  name                String        @unique
+  description         String
+  category            String
+  difficulty          String        @default("beginner")
+  estimatedTime       String?
+  constitutionalBasis String?
+  steps               ProcessStep[]
+  createdAt           DateTime      @default(now())
+}
+
+model ProcessStep {
+  id                    String            @id @default(cuid())
+  processId             String
+  process               GovernanceProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
+  order                 Int
+  title                 String
+  description           String
+  actor                 String
+  institution           String            @default("")
+  constitutionalArticle String?
+  duration              String?
+  isOptional            Boolean           @default(false)
+  outcomes              String[]
+  fact                  String?
+  options               Json?
+}
+
+// ─── TIMELINE ────────────────────────────────────────────────
+
+model TimelineEvent {
+  id           String   @id @default(cuid())
+  date         DateTime
+  displayDate  String
+  title        String
+  description  String
+  category     String
+  significance String
+  relatedData  Json?
+  createdAt    DateTime @default(now())
+
+  @@index([category, date])
+}
+
+// ─── LEARNING ────────────────────────────────────────────────
+
+model LearningPath {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  title          String           @unique
+  description    String
+  level          String
+  estimatedHours Float
+  color          String           @default("slate")
+  prerequisites  String[]
+  modules        LearningModule[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model LearningModule {
+  id               String       @id @default(cuid())
+  pathId           String
+  path             LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  title            String
+  description      String       @default("")
+  type             String       @default("explainer")
+  content          String       @default("")
+  estimatedMinutes Int          @default(30)
+  order            Int
+  createdAt        DateTime     @default(now())
+}
+
+// ─── CITIZEN ACTION ──────────────────────────────────────────
+
+model CitizenAction {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  icon        String
+  difficulty  String
+  cost        String
+  timeline    String
+  legalBasis  String
+  template    String?
+  steps       String[]
+  createdAt   DateTime @default(now())
+}
+
+// ─── WRITS ───────────────────────────────────────────────────
+
+model Writ {
+  id      String @id @default(cuid())
+  name    String @unique
+  meaning String
+  usage   String
+}
+
+// ─── CIVIL SERVICES ─────────────────────────────────────────
+
+model CivilService {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  exam        String
+  cadre       String
+}
+
+// ─── IDEOLOGY SPECTRUM ───────────────────────────────────────
+
+model IdeologyPosition {
+  id          String   @id @default(cuid())
+  position    String   @unique
+  parties     String[]
+  description String
+  order       Int      @default(0)
+}
