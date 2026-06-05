@@ -7,7 +7,8 @@ export const redisConnection = new Redis(process.env.REDIS_URL || "redis://local
 });
 
 const defaultQueueOptions: QueueOptions = {
-  connection: redisConnection,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  connection: redisConnection as any,
   defaultJobOptions: {
     attempts: 3,
     backoff: {

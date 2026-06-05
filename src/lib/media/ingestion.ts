@@ -206,7 +206,8 @@ async function downloadValidateStore(
       format: "webp",
       fileSize: original.fileSize,
       checksum: original.checksum,
-      variants,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      variants: variants as any,
       sourceUrl,
       sourceDomain,
       sourceTrust,
@@ -224,7 +225,8 @@ async function downloadValidateStore(
       format: "webp",
       fileSize: original.fileSize,
       checksum: original.checksum,
-      variants,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      variants: variants as any,
       sourceUrl,
       sourceDomain,
       sourceTrust,

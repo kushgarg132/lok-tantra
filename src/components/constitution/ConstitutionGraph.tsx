@@ -229,8 +229,8 @@ export function ConstitutionGraph() {
         .data(simNodes)
         .join("g")
         .attr("cursor", "pointer")
-        .call(
-          d3.drag<SVGGElement, any>()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .call((d3.drag<SVGGElement, any>()
             .on("start", (event, d) => {
               if (!event.active) simulation.alphaTarget(0.3).restart();
               d.fx = d.x;
@@ -245,6 +245,7 @@ export function ConstitutionGraph() {
               d.fx = null;
               d.fy = null;
             })
+          ) as any
         );
 
       // Circles

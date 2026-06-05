@@ -1,4 +1,4 @@
-import { prisma } from "../../db";
+import { prisma } from "../db";
 import { apiFetchQueue } from "./queue";
 
 export class ReconciliationService {

@@ -11,10 +11,11 @@ const app = new Hono().basePath("/api/admin/queues");
 const serverAdapter = new HonoAdapter(app);
 
 createBullBoard({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   queues: [
-    new BullMQAdapter(apiFetchQueue),
-    new BullMQAdapter(scrapeHtmlQueue),
-    new BullMQAdapter(pdfOcrQueue),
+    new BullMQAdapter(apiFetchQueue) as any,
+    new BullMQAdapter(scrapeHtmlQueue) as any,
+    new BullMQAdapter(pdfOcrQueue) as any,
   ],
   serverAdapter,
 });

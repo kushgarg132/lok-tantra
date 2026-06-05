@@ -505,8 +505,8 @@ function RelationshipBadge({ label, value }: { label: string; value: string }) {
 
 function RelationshipView({ title, type, nodes }: { title: string; type: string; nodes: PowerNodeDTO[] }) {
   const relationships = nodes
-    .filter((n) => (n as Record<string, unknown>)[type])
-    .map((n) => ({ from: n.name, to: (n as Record<string, unknown>)[type] as string }));
+    .filter((n) => (n as unknown as Record<string, unknown>)[type])
+    .map((n) => ({ from: n.name, to: (n as unknown as Record<string, unknown>)[type] as string }));
 
   return (
     <div className="card p-5">
