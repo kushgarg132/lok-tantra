@@ -111,6 +111,57 @@ const features = [
     ),
   },
   {
+    title: "Democracy Live",
+    description: "Real-time governance stream — Parliament sessions, Supreme Court constitutional benches, elections under MCC, cabinet reshuffles, governor changes, and ordinances.",
+    href: "/democracy-live",
+    color: "indigo",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="11" opacity="0.3" />
+        <line x1="12" y1="2" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="22" />
+        <line x1="2" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="22" y2="12" />
+      </svg>
+    ),
+  },
+  {
+    title: "Governance Search",
+    description: "Semantic search across the constitution, representatives, institutions, and elections. Hybrid BM25 + vector retrieval with AI-synthesised answers and citation extraction.",
+    href: "/search",
+    color: "indigo",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+        <path d="M11 8v3m0 0v3m0-3h3m-3 0H8" opacity="0.5" />
+      </svg>
+    ),
+  },
+  {
+    title: "Governance Atlas",
+    description: "Interactive bubble map of all 36 states and UTs — explore 2024 Lok Sabha results, voter turnout, population density, and seat distribution across India.",
+    href: "/atlas",
+    color: "emerald",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        <circle cx="8" cy="9" r="1.5" fill="currentColor" /><circle cx="15" cy="14" r="2" fill="currentColor" /><circle cx="12" cy="6" r="1" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    title: "Political Graphs",
+    description: "Alliance networks, constitutional power hierarchy trees, and election heatmaps — built with D3.js, Cytoscape.js, and Framer Motion.",
+    href: "/graph",
+    color: "violet",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="5" cy="5" r="2" /><circle cx="19" cy="5" r="2" /><circle cx="12" cy="19" r="2" /><circle cx="19" cy="12" r="2" />
+        <line x1="7" y1="5" x2="17" y2="5" /><line x1="19" y1="7" x2="19" y2="10" />
+        <line x1="5" y1="7" x2="11" y2="17" /><line x1="19" y1="14" x2="13" y2="17" />
+      </svg>
+    ),
+  },
+  {
     title: "Political Funding & Transparency",
     description: "Follow the money — electoral bonds (₹16,518 cr), corporate donation flows, MP affidavits, and the influence network connecting donors to parties to policy.",
     href: "/funding",
@@ -137,6 +188,8 @@ const colorMap: Record<string, string> = {
   jade: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 group-hover:bg-emerald-200",
   slate: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 group-hover:bg-slate-200",
   red: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 group-hover:bg-red-200",
+  indigo: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 group-hover:bg-indigo-200",
+  violet: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 group-hover:bg-violet-200",
 };
 
 export function FeatureGrid() {

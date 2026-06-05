@@ -39,7 +39,7 @@ function buildContext(chunks: KnowledgeChunk[]): string {
   );
 }
 
-function parseCitations(text: string): Citation[] {
+export function parseCitations(text: string): Citation[] {
   const citations: Citation[] = [];
   const seen = new Set<string>();
 
