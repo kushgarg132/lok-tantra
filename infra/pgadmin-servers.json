@@ -1,0 +1,16 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "LokTantra (local)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "loktantra",
+      "Username": "loktantra",
+      "Password": "loktantra_dev",
+      "SSLMode": "prefer",
+      "PassFile": "",
+      "SavePassword": true
+    }
+  }
+}

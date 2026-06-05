@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 
+export const revalidate = 86400; // Historical timeline data is static
+
 export const metadata: Metadata = {
   title: "Political History",
   description: "Interactive timeline of Indian democracy — from independence to present day",

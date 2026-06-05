@@ -1,4 +1,4 @@
-import { Worker } from "bullmq";
+import { Worker, Queue } from "bullmq";
 import { redisConnection } from "../lib/etl/queue";
 import { ADRIngestor } from "../lib/etl/ingestors/adr.ingestor";
 import { ECIIngestor } from "../lib/etl/ingestors/eci.ingestor";
@@ -9,6 +9,10 @@ import { ingestEntityMedia, refreshStaleAssets } from "../lib/media/ingestion";
 import type { IngestJobData } from "../lib/media/types";
 import { createLogger } from "../lib/observability/logger";
 import { withJobInstrumentation } from "../lib/observability/instrumentation";
+import { prisma } from "../lib/db";
+
+// Dead-letter queue for jobs that have exhausted all retries
+const dlqQueue = new Queue("dlq", { connection: redisConnection as any });
 
 const log = createLogger("WORKER");
 log.info("Starting LokTantra ETL Worker Process");
@@ -138,7 +142,45 @@ const imageIngestWorker = new Worker(
   { connection: redisConnection as any, concurrency: 3 },
 );
 
-// ── Structured event logging for all workers ─────────────────────────────────
+// ── Structured event logging + DLQ routing for all workers ───────────────────
+async function handleExhaustedJob(
+  queueName: string,
+  job: { id?: string; name?: string; attemptsMade?: number; data?: unknown } | undefined,
+  err: Error,
+  wlog: ReturnType<typeof createLogger>,
+): Promise<void> {
+  wlog.error("Job failed — all retries exhausted, routing to DLQ", {
+    jobId:    job?.id,
+    jobName:  job?.name,
+    attempts: job?.attemptsMade,
+    error:    err.message,
+  });
+
+  try {
+    // Push a tombstone entry to the DLQ queue for inspection and manual replay
+    await dlqQueue.add("dead-job", {
+      originalQueue: queueName,
+      jobId:         job?.id,
+      jobName:       job?.name,
+      jobData:       job?.data,
+      errorMessage:  err.message,
+      failedAt:      new Date().toISOString(),
+    });
+
+    // Persist a critical alert so the observability dashboard picks it up
+    await prisma.alertEvent.create({
+      data: {
+        rule:     `dlq.${queueName}`,
+        severity: "critical",
+        message:  `Job ${job?.name ?? "unknown"} (id: ${job?.id}) exhausted all retries in queue "${queueName}": ${err.message}`,
+        context:  { jobId: job?.id, jobName: job?.name, queue: queueName },
+      },
+    });
+  } catch (alertErr) {
+    wlog.error("Failed to write DLQ entry or alert", { error: (alertErr as Error).message });
+  }
+}
+
 for (const [worker, name] of [
   [apiFetchWorker,    "api-fetch"   ],
   [scrapeHtmlWorker,  "scrape-html" ],
@@ -146,9 +188,16 @@ for (const [worker, name] of [
   [imageIngestWorker, "image-ingest"],
 ] as const) {
   const wlog = createLogger(`QUEUE:${name}`);
-  worker.on("completed", (job)      => wlog.info("Job completed", { jobId: job.id,  jobName: job.name }));
-  worker.on("failed",    (job, err) => wlog.error("Job failed",   { jobId: job?.id, jobName: job?.name, error: err.message }));
-  worker.on("stalled",   (jobId)    => wlog.warn("Job stalled",   { jobId }));
+  worker.on("completed", (job) => wlog.info("Job completed", { jobId: job.id, jobName: job.name }));
+  worker.on("stalled",   (jobId) => wlog.warn("Job stalled", { jobId }));
+  worker.on("failed", (job, err) => {
+    wlog.error("Job failed", { jobId: job?.id, jobName: job?.name, error: err.message });
+    // Route to DLQ only when all attempts are exhausted
+    const maxAttempts = job?.opts?.attempts ?? 3;
+    if ((job?.attemptsMade ?? 0) >= maxAttempts) {
+      handleExhaustedJob(name, job, err, wlog).catch(() => {});
+    }
+  });
 }
 
 // ── Graceful Shutdown ────────────────────────────────────────────────────────

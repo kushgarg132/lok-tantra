@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { LearnDashboard } from "@/components/learn/LearnDashboard";
 
+export const revalidate = 86400; // Learning content is static
+
 export const metadata: Metadata = {
   title: "Learn Indian Democracy",
   description: "Interactive learning engine — quizzes, simulations, timelines, visual explainers for Constitution, Elections, Judiciary, and more. Beginner to UPSC level.",

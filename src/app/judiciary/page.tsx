@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { JudiciaryDashboard } from "@/components/judiciary/JudiciaryDashboard";
 
+export const revalidate = 86400; // Court and case data rarely changes
+
 export const metadata: Metadata = {
   title: "Judiciary Intelligence — LokTantra",
   description:

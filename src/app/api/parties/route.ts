@@ -3,8 +3,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 
 const QuerySchema = z.object({
-  abbr: z.string().max(20).optional(),
-  type: z.enum(["ideology"]).optional(),
+  abbr:   z.string().max(20).optional(),
+  type:   z.enum(["ideology"]).optional(),
+  limit:  z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 
 export async function GET(request: Request) {
@@ -14,7 +16,7 @@ export async function GET(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.issues }, { status: 400 });
     }
-    const { abbr, type } = parsed.data;
+    const { abbr, type, limit, offset } = parsed.data;
 
     if (type === "ideology") {
       const spectrum = await prisma.ideologyPosition.findMany({ orderBy: { order: "asc" } });
@@ -34,16 +36,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: party });
     }
 
-    const parties = await prisma.politicalParty.findMany({
-      select: {
-        id: true, name: true, abbreviation: true, ideology: true, color: true,
-        type: true, logoUrl: true, currentSeats: true, founded: true,
-        _count: { select: { members: true } },
-      },
-      orderBy: { name: "asc" },
-    });
+    const [parties, total] = await prisma.$transaction([
+      prisma.politicalParty.findMany({
+        select: {
+          id: true, name: true, abbreviation: true, ideology: true, color: true,
+          type: true, logoUrl: true, currentSeats: true, founded: true,
+          _count: { select: { members: true } },
+        },
+        orderBy: { name: "asc" },
+        take:    limit,
+        skip:    offset,
+      }),
+      prisma.politicalParty.count(),
+    ]);
 
-    return NextResponse.json({ data: parties });
+    return NextResponse.json({ data: parties, total, limit, offset });
   } catch (error) {
     console.error("[API:parties]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

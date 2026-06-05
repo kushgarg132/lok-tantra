@@ -20,12 +20,21 @@ export function getNeo4jDriver(): Driver {
 }
 
 function createDriver(): Driver {
-  const uri = process.env.NEO4J_URI || "bolt://localhost:7687";
-  const user = process.env.NEO4J_USER || "neo4j";
-  const password = process.env.NEO4J_PASSWORD || "password";
+  const uri      = process.env.NEO4J_URI      || "bolt://localhost:7687";
+  const user     = process.env.NEO4J_USER     || "neo4j";
+  const password = process.env.NEO4J_PASSWORD;
+
+  if (!password) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("NEO4J_PASSWORD environment variable is required in production.");
+    }
+    console.warn("[Neo4j] NEO4J_PASSWORD not set — using insecure default (dev only).");
+  }
+
+  const effectivePassword = password || "password";
 
   try {
-    const driver = neo4j.driver(uri, neo4j.auth.basic(user, password), {
+    const driver = neo4j.driver(uri, neo4j.auth.basic(user, effectivePassword), {
       maxConnectionPoolSize: 100,
       connectionTimeout: 30000,
     });

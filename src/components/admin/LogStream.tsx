@@ -49,12 +49,34 @@ export default function LogStream() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, source]);
 
+  // Pause auto-refresh after 5 minutes of inactivity (900 log entries/minute is wasteful for idle tabs)
+  const INACTIVITY_MS = 5 * 60 * 1000;
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isActive, setIsActive] = useState(true);
+
   useEffect(() => {
-    if (!autoRefresh) return;
+    function resetInactivity() {
+      setIsActive(true);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(() => setIsActive(false), INACTIVITY_MS);
+    }
+
+    resetInactivity();
+    const events = ["mousemove", "keydown", "pointerdown"];
+    events.forEach((e) => window.addEventListener(e, resetInactivity, { passive: true }));
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetInactivity));
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!autoRefresh || !isActive) return;
     const id = setInterval(fetchLogs, 10_000);
     return () => clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, level, source]);
+  }, [autoRefresh, isActive, level, source]);
 
   useEffect(() => {
     if (autoRefresh) bottomRef.current?.scrollIntoView({ behavior: "smooth" });

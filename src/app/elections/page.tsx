@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ElectionDashboard } from "@/components/elections/ElectionDashboard";
 
+export const revalidate = 3600; // Election data refreshes at most every hour
+
 export const metadata: Metadata = {
   title: "Election Intelligence — LokTantra",
   description: "Lok Sabha & Rajya Sabha analytics, parliament diagrams, coalition maps, vote share analysis, state election results, turnout heatmaps, and constituency data from 1952 to 2024.",

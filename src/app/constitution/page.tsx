@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ConstitutionExplorer } from "@/components/constitution/ConstitutionExplorer";
 
+export const revalidate = 86400; // Constitution text changes at most once per day
+
 export const metadata: Metadata = {
   title: "Constitution of India — LokTantra",
   description:

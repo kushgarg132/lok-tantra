@@ -53,41 +53,47 @@ export class ECIIngestor {
 
       // Sort by votes to determine winner
       candidates.sort((a, b) => b.votes - a.votes);
-      
-      for (let i = 0; i < candidates.length; i++) {
-        const cand = candidates[i];
-        const cleanName = NormalizationEngine.cleanName(cand.name);
-        const isWinner = i === 0;
 
-        // Resolve or create person
-        let personId = await NormalizationEngine.resolvePoliticianId(cleanName, state.code, constituency.name);
-        
-        if (!personId) {
-          const newPerson = await prisma.person.create({
-            data: { name: cleanName, stateCode: state.code, constituency: constituency.name },
+      // Pre-resolve all person IDs outside the transaction (network calls can't run inside)
+      const resolvedPersonIds: (string | null)[] = await Promise.all(
+        candidates.map((c) =>
+          NormalizationEngine.resolvePoliticianId(NormalizationEngine.cleanName(c.name), state.code, constituency.name),
+        ),
+      );
+
+      // All candidate writes in a single atomic transaction — partial-ingest safe on failure
+      await prisma.$transaction(async (tx) => {
+        for (let i = 0; i < candidates.length; i++) {
+          const cand = candidates[i];
+          const cleanName = NormalizationEngine.cleanName(cand.name);
+          const isWinner = i === 0;
+
+          let personId = resolvedPersonIds[i];
+          if (!personId) {
+            const newPerson = await tx.person.create({
+              data: { name: cleanName, stateCode: state.code, constituency: constituency.name },
+            });
+            personId = newPerson.id;
+          }
+
+          const partyRecord = await tx.politicalParty.upsert({
+            where: { name: cand.party },
+            update: {},
+            create: { name: cand.party, abbreviation: cand.party.substring(0, 4).toUpperCase(), color: "#ccc", type: "UNKNOWN" },
           });
-          personId = newPerson.id;
+
+          await tx.electionCandidate.create({
+            data: {
+              electionId: election.id,
+              constituencyId: constituency.id,
+              personId,
+              partyId: partyRecord.id,
+              votes: cand.votes,
+              isWinner,
+            },
+          });
         }
-
-        // Ensure party exists
-        const partyRecord = await prisma.politicalParty.upsert({
-          where: { name: cand.party },
-          update: {},
-          create: { name: cand.party, abbreviation: cand.party.substring(0, 4).toUpperCase(), color: "#ccc", type: "UNKNOWN" },
-        });
-
-        // Insert into ElectionCandidate
-        await prisma.electionCandidate.create({
-          data: {
-            electionId: election.id,
-            constituencyId: constituency.id,
-            personId,
-            partyId: partyRecord.id,
-            votes: cand.votes,
-            isWinner,
-          },
-        });
-      }
+      });
 
       console.log(`[ECI] Successfully processed constituency: ${constituencyName}`);
 

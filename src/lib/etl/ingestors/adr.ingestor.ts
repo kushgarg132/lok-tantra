@@ -52,47 +52,47 @@ export class ADRIngestor {
   }
 
   private async saveToDatabase(data: NormalizedPolitician) {
-    // 1. Deduplicate / Resolve ID
+    // Resolve person ID before entering the transaction (network-dependent normalization)
     const existingId = await NormalizationEngine.resolvePoliticianId(data.name, undefined, data.constituency);
 
-    if (existingId) {
-      // Update existing record with the new asset/criminal data
-      await prisma.person.update({
-        where: { id: existingId },
-        data: {
-          assets: data.assets,
-          criminalCases: data.criminalCasesCount > 0 ? [{ count: data.criminalCasesCount, source: data.sourceUrl }] : [],
-        },
-      });
-      console.log(`[ADR] Updated existing politician: ${data.name} (${existingId})`);
-    } else {
-      // Create new record
-      const newPerson = await prisma.person.create({
-        data: {
-          name: data.name,
-          constituency: data.constituency,
-          assets: data.assets,
-          criminalCases: data.criminalCasesCount > 0 ? [{ count: data.criminalCasesCount, source: data.sourceUrl }] : [],
-        },
-      });
-      console.log(`[ADR] Created new politician: ${data.name} (${newPerson.id})`);
-    }
-
-    // 2. Log Data Provenance
+    // Upsert DataSource outside the transaction so it exists before provenance is linked
     const source = await prisma.dataSource.upsert({
-      where: { name: "ADR_MYNETA" },
+      where:  { name: "ADR_MYNETA" },
       update: { lastFetchedAt: new Date(), status: "active" },
       create: { name: "ADR_MYNETA", url: this.baseUrl, fetchedAt: new Date() } as any,
     });
 
-    await prisma.dataProvenance.create({
-      data: {
-        entityType: "Person",
-        entityId: existingId || "NEW",
-        sourceId: source.id,
-        fetchedAt: new Date(),
-        confidence: 0.9,
-      },
+    // All DB writes in one atomic transaction — partial-ingest safe on failure
+    await prisma.$transaction(async (tx) => {
+      const assetData = {
+        assets:        data.assets,
+        criminalCases: data.criminalCasesCount > 0
+          ? [{ count: data.criminalCasesCount, source: data.sourceUrl }]
+          : [],
+      };
+
+      let personId: string;
+      if (existingId) {
+        await tx.person.update({ where: { id: existingId }, data: assetData });
+        personId = existingId;
+        console.log(`[ADR] Updated existing politician: ${data.name} (${existingId})`);
+      } else {
+        const newPerson = await tx.person.create({
+          data: { name: data.name, constituency: data.constituency, ...assetData },
+        });
+        personId = newPerson.id;
+        console.log(`[ADR] Created new politician: ${data.name} (${newPerson.id})`);
+      }
+
+      await tx.dataProvenance.create({
+        data: {
+          entityType: "Person",
+          entityId:   personId,
+          sourceId:   source.id,
+          fetchedAt:  new Date(),
+          confidence: 0.9,
+        },
+      });
     });
   }
 }

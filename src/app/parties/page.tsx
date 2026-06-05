@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 
+export const revalidate = 3600; // Party data (seats, ideology) changes at most every hour
+
 export const metadata: Metadata = {
   title: "Political Parties",
   description: "Explore India's political parties — ideologies, leadership, electoral performance, and alliances",

@@ -152,19 +152,34 @@ export async function generateResponse(
   ];
 
   try {
+    // Estimate input token budget: (chars / 4) is a rough approximation
+    const historyChars   = history.slice(-6).reduce((s, m) => s + m.content.length, 0);
+    const contextChars   = context.length;
+    const estimatedInput = Math.ceil((SYSTEM_PROMPT.length + contextChars + historyChars + query.length) / 4);
+    // Leave headroom: clamp output budget between 200 and 900 tokens
+    const maxOutputTokens = Math.max(200, Math.min(900, 4096 - estimatedInput));
+
+    // Build system content with cache_control on the static system prompt to save ~90% of
+    // the 500-token system prompt cost across repeated requests (5-minute Anthropic cache TTL)
+    const systemBlocks: object[] = [
+      { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+    ];
+    if (context) {
+      systemBlocks.push({ type: "text", text: context });
+    }
+
     const response = await fetch(CLAUDE_API, {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        "x-api-key":            apiKey,
+        "anthropic-version":    "2023-06-01",
+        "anthropic-beta":       "prompt-caching-2024-07-31",
+        "content-type":         "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 900,
-        system: context
-          ? `${SYSTEM_PROMPT}\n\n${context}`
-          : SYSTEM_PROMPT,
+        model:      "claude-haiku-4-5-20251001",
+        max_tokens: maxOutputTokens,
+        system:     systemBlocks,
         messages,
       }),
       signal: AbortSignal.timeout(20000),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import QueueHealthCard from "./QueueHealthCard";
 import ScraperHealthGrid from "./ScraperHealthGrid";
 import AlertList from "./AlertList";
@@ -61,12 +61,35 @@ export default function ObservabilityDashboard() {
     } catch {}
   }, []);
 
+  // Pause polling after 5 minutes of inactivity to avoid ~2,880 req/day per idle tab
+  const INACTIVITY_MS = 5 * 60 * 1000;
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isActive, setIsActive] = useState(true);
+
+  useEffect(() => {
+    function resetInactivity() {
+      setIsActive(true);
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(() => setIsActive(false), INACTIVITY_MS);
+    }
+
+    resetInactivity();
+    const events = ["mousemove", "keydown", "pointerdown", "visibilitychange"];
+    events.forEach((e) => window.addEventListener(e, resetInactivity, { passive: true }));
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetInactivity));
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     fetchData();
     fetchAlerts();
+    if (!isActive) return;
     const id = setInterval(fetchData, 30_000);
     return () => clearInterval(id);
-  }, [fetchData, fetchAlerts]);
+  }, [fetchData, fetchAlerts, isActive]);
 
   async function recoveryAction(action: string, queue?: QueueName) {
     setActLoading(true);

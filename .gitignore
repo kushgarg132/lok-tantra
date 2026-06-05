@@ -16,3 +16,5 @@ infra/terraform/terraform.tfvars
 
 # Generated secrets (never commit actual secrets)
 infra/k8s/02-secrets.yaml
+
+.vercel

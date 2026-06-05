@@ -294,40 +294,42 @@ No PgBouncer or explicit Prisma connection pool configuration. Default Prisma co
 ## 6. Production Readiness Checklist
 
 ### Critical (must fix before launch)
-- [ ] Add try-catch error handling to all 8 unguarded API routes
-- [ ] Add Zod input validation to all API query parameters
-- [ ] Fix `shortestPath` unbounded traversal (`[*]` → `[*..6]`)
-- [ ] Add LRU eviction to in-memory graph query cache (500 entry cap)
-- [ ] Remove `unsafe-eval` from CSP in production builds
-- [ ] Add `onDelete: Cascade` / `SetNull` to all FK relations with orphan risk
-- [ ] Add missing FK indexes to Prisma schema (Account.userId, Session.userId, etc.)
-- [ ] Validate required env vars at startup (fail loudly, not silently)
-- [ ] Replace in-memory rate limiter in middleware with distributed Redis store
-- [ ] Add error handling + DLQ to BullMQ workers
+- [x] Add try-catch error handling to all 8 unguarded API routes *(already implemented)*
+- [x] Add Zod input validation to all API query parameters *(already implemented)*
+- [x] Fix `shortestPath` unbounded traversal (`[*]` → `[*..6]`) *(already implemented)*
+- [x] Add LRU eviction to in-memory graph query cache (500 entry cap) *(already implemented)*
+- [x] Remove `unsafe-eval` from CSP in production builds *(already implemented via isDev check)*
+- [x] Add `onDelete: Cascade` / `SetNull` to all FK relations with orphan risk *(already in schema)*
+- [x] Add missing FK indexes to Prisma schema (Account.userId, Session.userId, etc.) *(already in schema)*
+- [x] Validate required env vars at startup (fail loudly, not silently) — `src/lib/config.ts` + Neo4j driver updated
+- [ ] Replace in-memory rate limiter in middleware with distributed Redis store *(middleware runs on Edge — requires HTTP sidecar or Node.js wrapper; deferred)*
+- [x] Add error handling + DLQ to BullMQ workers — `src/worker/index.ts` updated with DLQ queue + AlertEvent persistence
 
 ### High (fix in first sprint post-launch)
 - [ ] Remove or lazy-load unused dependencies (recharts, maplibre-gl, d3)
-- [ ] Add `revalidate` ISR to all public civic data pages
+- [x] Add `revalidate` ISR to all public civic data pages — constitution (86400), elections/parties/representatives (3600), judiciary/timeline/learn (86400)
 - [ ] Implement streaming response in `/api/assistant`
 - [ ] Add PgBouncer / Prisma connection pooling config
-- [ ] Add composite temporal indexes `(personId, validFrom, validTo)` on PersonRole/PersonPartyHistory
+- [x] Add composite temporal indexes `(personId, validFrom, validTo)` on PersonRole/PersonPartyHistory *(already in schema)*
 - [ ] Add soft-delete (`deletedAt`) to all historical immutable models
 - [ ] Route constitution search through Elasticsearch (bypass `ILIKE` full scan)
-- [ ] Add Claude prompt caching for system prompt
-- [ ] Wrap ETL ingestors in `prisma.$transaction()`
-- [ ] Pause admin dashboard polling on inactivity
+- [x] Add Claude prompt caching for system prompt — `cache_control: { type: "ephemeral" }` added to `generator.ts`
+- [x] Wrap ETL ingestors in `prisma.$transaction()` — ECI and ADR ingestors updated
+- [x] Pause admin dashboard polling on inactivity — 5-minute inactivity timer added to ObservabilityDashboard + LogStream
+- [x] Add dynamic `max_tokens` guard relative to input size — `generator.ts` updated
 
 ### Medium (next quarter)
-- [ ] Standardize API response envelope to `{ data, total?, meta? }` across all routes
+- [x] Standardize API response envelope to `{ data, total?, meta? }` — all routes now return `{ data, total, limit, offset }`
 - [ ] Enforce `strict` TypeScript and eliminate all `any` types
 - [ ] Add `next/font/google` migration (remove Google Fonts `@import`)
 - [ ] Implement `pg_trgm` trigram index on `Person.name` for normalization
 - [ ] Add React.memo to `StateResultsGrid` and other expensive list components
 - [ ] Add checkpoint/resume to ETL ingestors
 - [ ] Implement distributed scheduler lock with Redlock
-- [ ] Add `ConstitutionArticle.partId` FK index
-- [ ] Add `LandmarkCase.courtId` FK index
-- [ ] Add `Department.ministryId` FK index
+- [x] Add `ConstitutionArticle.partId` FK index *(already in schema)*
+- [x] Add `LandmarkCase.courtId` FK index *(already in schema)*
+- [x] Add `Department.ministryId` FK index *(already in schema)*
+- [x] Add pagination to `/api/parties` and `/api/learn` list endpoints
 
 ### Low (backlog)
 - [ ] Add Retry-After display in GovernanceAssistant UI for rate limits

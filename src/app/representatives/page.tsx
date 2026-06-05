@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { RepresentativeDiscovery } from "@/components/representatives/RepresentativeDiscovery";
 
+export const revalidate = 3600; // Representative data refreshes at most every hour
+
 export const metadata: Metadata = {
   title: "Find Your Representatives",
   description:
