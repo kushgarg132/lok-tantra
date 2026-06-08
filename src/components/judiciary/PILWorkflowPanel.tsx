@@ -1,7 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { PIL_STEPS } from "@/data/judiciary/intelligence";
+interface PILStep {
+  step: number;
+  title: string;
+  actor: string;
+  description: string;
+  basis: string;
+  duration: string;
+  icon: string;
+}
+
+const PIL_STEPS: PILStep[] = [
+  { step: 1, title: "Identify Public Interest Issue", actor: "Petitioner / NGO / Journalist", description: "Any person — even via newspaper article — can identify a systemic violation of constitutional or statutory rights affecting a class of persons unable to approach courts themselves (bonded labour, prisoners, slum dwellers).", basis: "Art. 32 (SC) / Art. 226 (HC) — relaxed locus standi", duration: "—", icon: "🔍" },
+  { step: 2, title: "File Writ Petition / Letter", actor: "Petitioner", description: "File at SC under Art. 32 for fundamental right violations or at HC under Art. 226 for broader grounds. Even a postcard or letter to the Chief Justice can trigger PIL proceedings (epistolary jurisdiction).", basis: "Art. 32 / Art. 226 — SC/HC discretion", duration: "1 day", icon: "📝" },
+  { step: 3, title: "Admission / Suo Motu Cognizance", actor: "Chief Justice's Bench", description: "Court examines whether the issue is of genuine public interest. Chief Justice can take suo motu cognizance based on media reports or letters. Cases involving enforcement of law or constitutional provisions get priority.", basis: "CJI's roster power; inherent powers of the court", duration: "1–4 weeks", icon: "⚖️" },
+  { step: 4, title: "Issue Notice to Respondents", actor: "Court Registrar", description: "Court issues notice to the Union of India, State Government, or statutory authorities directing them to file a counter-affidavit. Respondents get time to respond (usually 4–8 weeks).", basis: "Order VI, CPC; inherent powers", duration: "4–8 weeks", icon: "📬" },
+  { step: 5, title: "Amicus Curiae Appointed", actor: "Court", description: "Court may appoint a senior advocate as 'friend of the court' (amicus curiae) to assist on complex factual or legal questions, especially in cases involving technical matters or multiple stakeholders.", basis: "Inherent powers of the court", duration: "Concurrent", icon: "🤝" },
+  { step: 6, title: "Fact-Finding Committee / Commissioner", actor: "Court-appointed Commissioner", description: "In cases requiring ground-level investigation (bonded labour, prison conditions, pollution), court appoints a Commissioner to visit the site, collect facts, and submit a report. This report forms the factual basis for directions.", basis: "Art. 32; inherent powers; CPC Order XXVI", duration: "2–6 months", icon: "🔬" },
+  { step: 7, title: "Hearing & Arguments", actor: "Parties, Amicus, Intervenors", description: "Court hears arguments from all parties. NGOs, state governments, and technical experts may intervene. Interim directions are often issued at this stage to prevent ongoing harm (e.g., factory closure, release of prisoners).", basis: "Art. 32 / 226; Order 1 Rule 8 CPC", duration: "Months to years", icon: "🗣️" },
+  { step: 8, title: "Interim Directions / Monitoring", actor: "Court", description: "Court may issue interim directions throughout the hearing — closing polluting industries, ordering government schemes, releasing undertrials, or constituting High-Powered Committees. These become binding immediately.", basis: "Art. 142 (complete justice) + Art. 32/226", duration: "Ongoing", icon: "📋" },
+  { step: 9, title: "Final Judgment & Directions", actor: "Court", description: "Final judgment issues binding directions to government, statutory authorities, or private parties. Directions may include policy changes, legislation recommendations, compensation awards, or structural remedies.", basis: "Art. 32 (SC) / Art. 226 (HC) + Art. 142", duration: "—", icon: "📜" },
+  { step: 10, title: "Compliance Monitoring", actor: "Court + Monitoring Committee", description: "Most landmark PILs remain open for compliance monitoring. Court calls for periodic compliance reports. Non-compliance can result in contempt proceedings. Some PILs have been monitored for decades (e.g., MC Mehta cases).", basis: "Contempt of Courts Act, 1971; Art. 129 / 215", duration: "Years / ongoing", icon: "🔭" },
+];
 
 const STEP_COLORS = [
   "border-blue-400 bg-blue-500",

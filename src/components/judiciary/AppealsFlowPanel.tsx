@@ -1,7 +1,69 @@
 "use client";
 
 import { useState } from "react";
-import { APPEALS_ROUTES, type AppealsRoute } from "@/data/judiciary/intelligence";
+interface AppealsRoute {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  basis: string;
+  stages: { court: string; basis: string }[];
+}
+
+const APPEALS_ROUTES: AppealsRoute[] = [
+  {
+    id: "criminal",
+    name: "Criminal Appeals",
+    color: "#DC2626",
+    icon: "⚔️",
+    basis: "CrPC, 1973",
+    stages: [
+      { court: "Magistrate Court", basis: "CrPC — trial of offences up to 3 yrs" },
+      { court: "Sessions Court", basis: "CrPC — appeal from Magistrate (s.374)" },
+      { court: "High Court", basis: "Art. 215 / CrPC — appeal + revision" },
+      { court: "Supreme Court", basis: "Art. 134 / Art. 136 (SLP)" },
+    ],
+  },
+  {
+    id: "civil",
+    name: "Civil Appeals",
+    color: "#1565C0",
+    icon: "📄",
+    basis: "Code of Civil Procedure, 1908",
+    stages: [
+      { court: "Trial Court (Civil Judge)", basis: "CPC — original civil jurisdiction" },
+      { court: "District Court", basis: "CPC — first appeal from original decree" },
+      { court: "High Court", basis: "CPC s.100 — second appeal on question of law" },
+      { court: "Supreme Court", basis: "Art. 133 / Art. 136 (SLP)" },
+    ],
+  },
+  {
+    id: "constitutional",
+    name: "Constitutional Writs",
+    color: "#7C3AED",
+    icon: "📜",
+    basis: "Art. 226 / Art. 32",
+    stages: [
+      { court: "High Court (Art. 226)", basis: "Writ jurisdiction — any violation of law" },
+      { court: "Supreme Court (Art. 32)", basis: "FRs only — itself a Fundamental Right" },
+      { court: "SLP / Appeal (Art. 136)", basis: "From HC to SC — discretionary" },
+      { court: "Review Petition (Art. 137)", basis: "SC reviews its own order" },
+    ],
+  },
+  {
+    id: "service",
+    name: "Service Matters",
+    color: "#047857",
+    icon: "🏛️",
+    basis: "Administrative Tribunals Act, 1985",
+    stages: [
+      { court: "Department / Disciplinary Authority", basis: "Service rules — initial order" },
+      { court: "Central Administrative Tribunal (CAT)", basis: "Art. 323A — exclusive jurisdiction" },
+      { court: "High Court (Division Bench)", basis: "Art. 226/227 — review of CAT orders" },
+      { court: "Supreme Court", basis: "Art. 136 (SLP) — constitutional questions" },
+    ],
+  },
+];
 
 // SVG dimensions
 const CARD_W = 150;

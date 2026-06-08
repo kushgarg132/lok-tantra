@@ -9,6 +9,13 @@ import { CabinetSecretariatPanel } from "./CabinetSecretariatPanel";
 import { DistrictAdminPanel } from "./DistrictAdminPanel";
 import { AllIndiaServicesPanel } from "./AllIndiaServicesPanel";
 
+export interface BureaucraticLevelDB {
+  id: string; hierarchy: string; level: number; title: string; description: string;
+}
+export interface CivilServiceDB {
+  id: string; name: string; description: string; exam: string; cadre: string;
+}
+
 type TabId = "policy" | "ias" | "ips" | "pmo" | "cabinet" | "district" | "services";
 
 const TABS: { id: TabId; label: string; icon: string; desc: string }[] = [
@@ -21,19 +28,20 @@ const TABS: { id: TabId; label: string; icon: string; desc: string }[] = [
   { id: "services", label: "All India Services", icon: "📜", desc: "IAS, IPS, IFoS & more" },
 ];
 
-interface BureaucracyDashboardProps {
-  dbStats?: {
-    officials: number;
-    departments: number;
-  };
+interface Props {
+  levels: BureaucraticLevelDB[];
+  services: CivilServiceDB[];
+  ministryCount: number;
 }
 
-export function BureaucracyDashboard({ dbStats }: BureaucracyDashboardProps) {
+export function BureaucracyDashboard({ levels, services, ministryCount }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("policy");
+
+  const centralLevels = levels.filter((l) => l.hierarchy === "central_secretariat");
+  const districtLevels = levels.filter((l) => l.hierarchy === "district_administration");
 
   return (
     <div className="space-y-6">
-      {/* Tab bar */}
       <div className="flex overflow-x-auto gap-1 pb-1 -mx-1 px-1">
         {TABS.map((tab) => (
           <button
@@ -52,7 +60,6 @@ export function BureaucracyDashboard({ dbStats }: BureaucracyDashboardProps) {
         ))}
       </div>
 
-      {/* Active tab header */}
       <div className="flex items-center gap-3">
         <div className="text-2xl">{TABS.find((t) => t.id === activeTab)?.icon}</div>
         <div>
@@ -61,33 +68,20 @@ export function BureaucracyDashboard({ dbStats }: BureaucracyDashboardProps) {
           </h2>
           <div className="text-xs text-slate-500">{TABS.find((t) => t.id === activeTab)?.desc}</div>
         </div>
+        {ministryCount > 0 && (
+          <div className="ml-auto text-right">
+            <div className="text-xs text-slate-400">{ministryCount} ministries in DB</div>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      {activeTab === "policy" && <PolicyFlowPanel />}
-      {activeTab === "ias" && <IASHierarchyPanel />}
-      {activeTab === "ips" && <IPSHierarchyPanel />}
-      {activeTab === "pmo" && <PMOPanel />}
-      {activeTab === "cabinet" && <CabinetSecretariatPanel />}
+      {activeTab === "policy"   && <PolicyFlowPanel />}
+      {activeTab === "ias"      && <IASHierarchyPanel levels={centralLevels} />}
+      {activeTab === "ips"      && <IPSHierarchyPanel />}
+      {activeTab === "pmo"      && <PMOPanel />}
+      {activeTab === "cabinet"  && <CabinetSecretariatPanel />}
       {activeTab === "district" && <DistrictAdminPanel />}
-      {activeTab === "services" && <AllIndiaServicesPanel />}
-
-      {/* DB section */}
-      {dbStats && dbStats.officials > 0 && (
-        <div className="card p-5 border border-dashed border-slate-300 dark:border-slate-700">
-          <div className="text-xs text-slate-400 uppercase font-semibold mb-3">Database Records</div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-display font-bold text-slate-700 dark:text-slate-300">{dbStats.officials}</div>
-              <div className="text-xs text-slate-400">Officials seeded</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-display font-bold text-slate-700 dark:text-slate-300">{dbStats.departments}</div>
-              <div className="text-xs text-slate-400">Departments</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {activeTab === "services" && <AllIndiaServicesPanel services={services} />}
     </div>
   );
 }

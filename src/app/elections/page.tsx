@@ -1,28 +1,42 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ElectionDashboard } from "@/components/elections/ElectionDashboard";
+import type { Prisma } from "@prisma/client";
 
-export const revalidate = 3600; // Election data refreshes at most every hour
+type AssemblyElection = Prisma.StateAssemblyElectionGetPayload<Record<string, never>>;
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Election Intelligence — LokTantra",
   description: "Lok Sabha & Rajya Sabha analytics, parliament diagrams, coalition maps, vote share analysis, state election results, turnout heatmaps, and constituency data from 1952 to 2024.",
 };
 
+type PartyResult = Prisma.PartyElectionResultGetPayload<Record<string, never>>;
+type HistorySummary = Prisma.ElectionSummaryGetPayload<Record<string, never>>;
+type StateResult = Prisma.StateElectionResultGetPayload<Record<string, never>>;
+
 export default async function ElectionsPage() {
-  const [partyResults, history, states] = await Promise.all([
+  const [partyResults, history, stateResults, assemblyElections] = await Promise.all([
     prisma.partyElectionResult.findMany({
       where: { type: "lok_sabha" },
       orderBy: [{ year: "desc" }, { seats: "desc" }],
-    }).catch(() => []),
+    }).catch((): PartyResult[] => []),
     prisma.electionSummary.findMany({
       where: { type: "lok_sabha" },
       orderBy: { year: "asc" },
-    }).catch(() => []),
-    prisma.stateUT.findMany({ orderBy: { lsSeats: "desc" } }).catch(() => []),
+    }).catch((): HistorySummary[] => []),
+    prisma.stateElectionResult.findMany({
+      where: { year: 2024, type: "lok_sabha" },
+      orderBy: { seats: "desc" },
+    }).catch((): StateResult[] => []),
+    prisma.stateAssemblyElection.findMany({
+      orderBy: [{ year: "desc" }, { totalSeats: "desc" }],
+    }).catch((): AssemblyElection[] => []),
   ]);
 
   const latestYear = history[history.length - 1]?.year ?? 2024;
+
   const currentResults = partyResults
     .filter((r) => r.year === latestYear)
     .map((r) => ({ party: r.party, color: r.color, seats: r.seats, voteShare: r.voteShare }));
@@ -32,14 +46,32 @@ export default async function ElectionsPage() {
     totalSeats: h.totalSeats,
     majorWinner: h.majorWinner,
     majorSeats: h.majorSeats,
-    turnout: h.turnout,
+    turnout: h.turnout ?? 0,
   }));
 
-  const stateSeats = states.map((s) => ({
-    name: s.name,
-    total: s.lsSeats,
-    reservedSC: s.reservedSC,
-    reservedST: s.reservedST,
+  // Historical per-party breakdown for charts
+  const partyHistory = (["INC", "BJP", "Left", "SP"] as const).reduce<
+    Record<string, { year: number; seats: number; voteShare: number }[]>
+  >((acc, p) => {
+    acc[p] = partyResults
+      .filter((r) => r.party === p)
+      .map((r) => ({ year: r.year, seats: r.seats, voteShare: r.voteShare ?? 0 }))
+      .sort((a, b) => a.year - b.year);
+    return acc;
+  }, {});
+
+  const stateElectionResults = stateResults.map((s) => ({
+    state: s.state,
+    code: s.code,
+    seats: s.seats,
+    dominant: s.dominant,
+    dominantColor: s.dominantColor,
+    dominantSeats: s.dominantSeats,
+    alliance: s.alliance as "NDA" | "INDIA" | "Other",
+    turnout: s.turnout,
+    ndaSeats: s.ndaSeats,
+    indiaSeats: s.indiaSeats,
+    otherSeats: s.otherSeats,
   }));
 
   return (
@@ -68,7 +100,10 @@ export default async function ElectionsPage() {
       <ElectionDashboard
         currentResults={currentResults}
         electionHistory={electionHistory}
-        stateSeats={stateSeats}
+        partyHistory={partyHistory}
+        stateElectionResults={stateElectionResults}
+        assemblyElections={assemblyElections}
+        latestYear={latestYear}
       />
     </div>
   );

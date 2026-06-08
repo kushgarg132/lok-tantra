@@ -125,8 +125,8 @@ export function ConstitutionExplorer({ parts, articles, amendments, cases }: Pro
             }))}
           />
         )}
-        {activeTab === "fundamental-rights" && <FundamentalRightsExplorer />}
-        {activeTab === "dpsp" && <DPSPExplorer />}
+        {activeTab === "fundamental-rights" && <FundamentalRightsExplorer articles={articles} />}
+        {activeTab === "dpsp" && <DPSPExplorer articles={articles} />}
         {activeTab === "amendments" && <AmendmentTimeline amendments={amendments} />}
         {activeTab === "cases" && <CasesView cases={cases} />}
         {activeTab === "doctrines" && <DoctrineExplorer />}

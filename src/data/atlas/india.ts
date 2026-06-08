@@ -1,4 +1,43 @@
-import { LS_2024_STATES, type State2024 } from "@/data/elections/intelligence";
+interface State2024 { state: string; code: string; seats: number; dominant: string; dominantColor: string; dominantSeats: number; alliance: "NDA" | "INDIA" | "Other"; turnout: number; ndaSeats: number; indiaSeats: number; otherSeats: number }
+
+const LS_2024_STATES: State2024[] = [
+  { state: "Uttar Pradesh",     code: "UP", seats: 80, dominant: "SP",     dominantColor: "#EF4444", dominantSeats: 37, alliance: "INDIA", turnout: 57.4, ndaSeats: 36, indiaSeats: 43, otherSeats: 1  },
+  { state: "Maharashtra",       code: "MH", seats: 48, dominant: "INC",    dominantColor: "#1565C0", dominantSeats: 13, alliance: "INDIA", turnout: 61.0, ndaSeats: 17, indiaSeats: 30, otherSeats: 1  },
+  { state: "West Bengal",       code: "WB", seats: 42, dominant: "TMC",    dominantColor: "#059669", dominantSeats: 29, alliance: "INDIA", turnout: 73.0, ndaSeats: 12, indiaSeats: 30, otherSeats: 0  },
+  { state: "Tamil Nadu",        code: "TN", seats: 39, dominant: "DMK",    dominantColor: "#DC143C", dominantSeats: 22, alliance: "INDIA", turnout: 69.1, ndaSeats: 1,  indiaSeats: 38, otherSeats: 0  },
+  { state: "Bihar",             code: "BR", seats: 40, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 12, alliance: "NDA",   turnout: 56.2, ndaSeats: 30, indiaSeats: 10, otherSeats: 0  },
+  { state: "Karnataka",         code: "KA", seats: 28, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 17, alliance: "NDA",   turnout: 69.5, ndaSeats: 19, indiaSeats: 9,  otherSeats: 0  },
+  { state: "Andhra Pradesh",    code: "AP", seats: 25, dominant: "TDP",    dominantColor: "#D97706", dominantSeats: 16, alliance: "NDA",   turnout: 79.4, ndaSeats: 21, indiaSeats: 4,  otherSeats: 0  },
+  { state: "Rajasthan",         code: "RJ", seats: 25, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 14, alliance: "NDA",   turnout: 58.2, ndaSeats: 14, indiaSeats: 8,  otherSeats: 3  },
+  { state: "Madhya Pradesh",    code: "MP", seats: 29, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 29, alliance: "NDA",   turnout: 58.1, ndaSeats: 29, indiaSeats: 0,  otherSeats: 0  },
+  { state: "Gujarat",           code: "GJ", seats: 26, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 25, alliance: "NDA",   turnout: 60.3, ndaSeats: 25, indiaSeats: 0,  otherSeats: 1  },
+  { state: "Odisha",            code: "OD", seats: 21, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 20, alliance: "NDA",   turnout: 74.2, ndaSeats: 20, indiaSeats: 1,  otherSeats: 0  },
+  { state: "Kerala",            code: "KL", seats: 20, dominant: "INC",    dominantColor: "#1565C0", dominantSeats: 18, alliance: "INDIA", turnout: 70.9, ndaSeats: 1,  indiaSeats: 19, otherSeats: 0  },
+  { state: "Telangana",         code: "TS", seats: 17, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 8,  alliance: "NDA",   turnout: 63.2, ndaSeats: 8,  indiaSeats: 8,  otherSeats: 1  },
+  { state: "Assam",             code: "AS", seats: 14, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 9,  alliance: "NDA",   turnout: 74.0, ndaSeats: 11, indiaSeats: 3,  otherSeats: 0  },
+  { state: "Jharkhand",         code: "JH", seats: 14, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 8,  alliance: "NDA",   turnout: 65.6, ndaSeats: 9,  indiaSeats: 5,  otherSeats: 0  },
+  { state: "Punjab",            code: "PB", seats: 13, dominant: "INC",    dominantColor: "#1565C0", dominantSeats: 7,  alliance: "INDIA", turnout: 60.8, ndaSeats: 2,  indiaSeats: 10, otherSeats: 1  },
+  { state: "Chhattisgarh",      code: "CG", seats: 11, dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 10, alliance: "NDA",   turnout: 72.1, ndaSeats: 10, indiaSeats: 1,  otherSeats: 0  },
+  { state: "Haryana",           code: "HR", seats: 10, dominant: "INC",    dominantColor: "#1565C0", dominantSeats: 5,  alliance: "INDIA", turnout: 63.2, ndaSeats: 5,  indiaSeats: 5,  otherSeats: 0  },
+  { state: "Delhi",             code: "DL", seats: 7,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 7,  alliance: "NDA",   turnout: 58.7, ndaSeats: 7,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Jammu & Kashmir",   code: "JK", seats: 5,  dominant: "NC",     dominantColor: "#1A237E", dominantSeats: 2,  alliance: "INDIA", turnout: 57.8, ndaSeats: 2,  indiaSeats: 3,  otherSeats: 0  },
+  { state: "Uttarakhand",       code: "UK", seats: 5,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 5,  alliance: "NDA",   turnout: 60.1, ndaSeats: 5,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Himachal Pradesh",  code: "HP", seats: 4,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 4,  alliance: "NDA",   turnout: 72.3, ndaSeats: 4,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Tripura",           code: "TR", seats: 2,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 2,  alliance: "NDA",   turnout: 80.4, ndaSeats: 2,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Meghalaya",         code: "ML", seats: 2,  dominant: "VPP",    dominantColor: "#64748B", dominantSeats: 1,  alliance: "Other", turnout: 70.1, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 1  },
+  { state: "Manipur",           code: "MN", seats: 2,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 1,  alliance: "NDA",   turnout: 70.2, ndaSeats: 1,  indiaSeats: 0,  otherSeats: 1  },
+  { state: "Arunachal Pradesh", code: "AR", seats: 2,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 2,  alliance: "NDA",   turnout: 80.3, ndaSeats: 2,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Goa",               code: "GA", seats: 2,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 1,  alliance: "NDA",   turnout: 76.5, ndaSeats: 1,  indiaSeats: 1,  otherSeats: 0  },
+  { state: "Nagaland",          code: "NL", seats: 1,  dominant: "NDPP",   dominantColor: "#64748B", dominantSeats: 1,  alliance: "NDA",   turnout: 62.1, ndaSeats: 1,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Mizoram",           code: "MZ", seats: 1,  dominant: "ZPM",    dominantColor: "#6D28D9", dominantSeats: 1,  alliance: "Other", turnout: 56.9, ndaSeats: 0,  indiaSeats: 0,  otherSeats: 1  },
+  { state: "Sikkim",            code: "SK", seats: 1,  dominant: "SKM",    dominantColor: "#059669", dominantSeats: 1,  alliance: "Other", turnout: 80.1, ndaSeats: 0,  indiaSeats: 0,  otherSeats: 1  },
+  { state: "Chandigarh",        code: "CH", seats: 1,  dominant: "INC",    dominantColor: "#1565C0", dominantSeats: 1,  alliance: "INDIA", turnout: 68.3, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 0  },
+  { state: "Puducherry",        code: "PY", seats: 1,  dominant: "INC",    dominantColor: "#1565C0", dominantSeats: 1,  alliance: "INDIA", turnout: 80.5, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 0  },
+  { state: "A&N Islands",       code: "AN", seats: 1,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 1,  alliance: "NDA",   turnout: 72.4, ndaSeats: 1,  indiaSeats: 0,  otherSeats: 0  },
+  { state: "Lakshadweep",       code: "LD", seats: 1,  dominant: "NCP-SP", dominantColor: "#7C3AED", dominantSeats: 1,  alliance: "INDIA", turnout: 84.1, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 0  },
+  { state: "Ladakh",            code: "LA", seats: 1,  dominant: "Ind.",   dominantColor: "#64748B", dominantSeats: 1,  alliance: "Other", turnout: 72.0, ndaSeats: 0,  indiaSeats: 0,  otherSeats: 1  },
+  { state: "DNH & DD",          code: "DD", seats: 2,  dominant: "BJP",    dominantColor: "#FF9933", dominantSeats: 2,  alliance: "NDA",   turnout: 71.2, ndaSeats: 2,  indiaSeats: 0,  otherSeats: 0  },
+];
 
 export interface StateAtlasData extends State2024 {
   lat: number;

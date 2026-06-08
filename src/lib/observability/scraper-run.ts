@@ -148,9 +148,10 @@ export async function getScraperHealth(): Promise<ScraperHealth[]> {
 
       const hoursSinceLast = lastSuccess ? (Date.now() - lastSuccess.getTime()) / 3600000 : Infinity;
       const status: ScraperHealth["status"] =
-        consecutiveFailures >= 5                           ? "down"     :
-        consecutiveFailures >= 2 || hoursSinceLast > 48   ? "degraded" :
-        lastSuccess                                        ? "healthy"  :
+        consecutiveFailures >= 5                                           ? "down"     :
+        !lastSuccess && consecutiveFailures === 0                          ? "unknown"  :
+        consecutiveFailures >= 2 || (lastSuccess && hoursSinceLast > 48)  ? "degraded" :
+        lastSuccess                                                        ? "healthy"  :
         "unknown";
 
       return { source, status, lastSuccess, lastError, consecutiveFailures, successRate, avgDurationMs, runsLast24h };

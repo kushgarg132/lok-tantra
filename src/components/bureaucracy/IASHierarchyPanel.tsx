@@ -1,31 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { IAS_RANKS } from "@/data/bureaucracy/intelligence";
+import type { BureaucraticLevelDB } from "./BureaucracyDashboard";
 
-const RANK_COLORS = [
-  { bg: "bg-slate-200 dark:bg-slate-700",     text: "text-slate-600 dark:text-slate-300",   border: "border-l-slate-400" },
-  { bg: "bg-slate-100 dark:bg-slate-800",     text: "text-slate-600 dark:text-slate-300",   border: "border-l-slate-300" },
-  { bg: "bg-blue-100 dark:bg-blue-900/30",    text: "text-blue-700 dark:text-blue-300",     border: "border-l-blue-400" },
-  { bg: "bg-indigo-100 dark:bg-indigo-900/30",text: "text-indigo-700 dark:text-indigo-300", border: "border-l-indigo-400" },
-  { bg: "bg-violet-100 dark:bg-violet-900/30",text: "text-violet-700 dark:text-violet-300", border: "border-l-violet-500" },
-  { bg: "bg-purple-100 dark:bg-purple-900/30",text: "text-purple-700 dark:text-purple-300", border: "border-l-purple-500" },
-  { bg: "bg-rose-100 dark:bg-rose-900/30",    text: "text-rose-700 dark:text-rose-300",     border: "border-l-rose-500" },
-  { bg: "bg-amber-100 dark:bg-amber-900/30",  text: "text-amber-700 dark:text-amber-300",   border: "border-l-amber-500" },
+const LEVEL_COLORS = [
+  { bg: "bg-amber-100 dark:bg-amber-900/30",   text: "text-amber-700 dark:text-amber-300",   border: "border-l-amber-500" },
+  { bg: "bg-rose-100 dark:bg-rose-900/30",     text: "text-rose-700 dark:text-rose-300",     border: "border-l-rose-500" },
+  { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-300", border: "border-l-purple-500" },
+  { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", border: "border-l-violet-500" },
+  { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-700 dark:text-indigo-300", border: "border-l-indigo-400" },
+  { bg: "bg-blue-100 dark:bg-blue-900/30",     text: "text-blue-700 dark:text-blue-300",     border: "border-l-blue-400" },
+  { bg: "bg-slate-100 dark:bg-slate-800",      text: "text-slate-600 dark:text-slate-300",   border: "border-l-slate-300" },
+  { bg: "bg-slate-200 dark:bg-slate-700",      text: "text-slate-600 dark:text-slate-300",   border: "border-l-slate-400" },
 ];
 
-// Pyramid widths from bottom (most junior) to top (most senior) — reversed display
-const PYRAMID_WIDTHS = [100, 90, 82, 72, 60, 48, 32, 12];
+// Pyramid widths: index 0 = top (narrowest), last = bottom (widest)
+const PYRAMID_WIDTHS = [12, 24, 36, 48, 60, 72, 84, 100];
 
-export function IASHierarchyPanel() {
-  const [selected, setSelected] = useState<number | null>(null);
+interface Props { levels: BureaucraticLevelDB[] }
+
+export function IASHierarchyPanel({ levels }: Props) {
+  const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"pyramid" | "table">("pyramid");
 
-  const reversed = [...IAS_RANKS].reverse();
+  const sorted = [...levels].sort((a, b) => a.level - b.level);
+
+  if (sorted.length === 0) {
+    return (
+      <div className="card p-8 text-center text-slate-400 text-sm">
+        No hierarchy data available. Run <code className="font-mono text-xs">npm run db:seed</code> to populate.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="card p-5 text-center">
           <div className="text-2xl font-display font-bold text-blue-700 dark:text-blue-300">~5,000</div>
@@ -38,13 +47,12 @@ export function IASHierarchyPanel() {
           <div className="text-[10px] text-slate-400">via UPSC Civil Services</div>
         </div>
         <div className="card p-5 text-center">
-          <div className="text-2xl font-display font-bold text-amber-600">1</div>
-          <div className="text-xs text-slate-500 mt-1">Cabinet Secretary</div>
-          <div className="text-[10px] text-slate-400">₹2,50,000 fixed pay</div>
+          <div className="text-2xl font-display font-bold text-amber-600">{sorted.length}</div>
+          <div className="text-xs text-slate-500 mt-1">Hierarchy levels</div>
+          <div className="text-[10px] text-slate-400">Central Secretariat</div>
         </div>
       </div>
 
-      {/* View toggle */}
       <div className="flex gap-2">
         {(["pyramid", "table"] as const).map((v) => (
           <button key={v} onClick={() => setView(v)}
@@ -56,109 +64,64 @@ export function IASHierarchyPanel() {
 
       {view === "pyramid" ? (
         <div className="space-y-4">
-          {/* Pyramid */}
           <div className="card p-6">
-            <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-6 text-center">IAS Rank Pyramid (Top → Junior)</h3>
+            <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-6 text-center">
+              Central Secretariat Hierarchy (Senior → Junior)
+            </h3>
             <div className="space-y-2">
-              {reversed.map((rank, i) => {
-                const originalIdx = IAS_RANKS.length - 1 - i;
-                const colors = RANK_COLORS[originalIdx] || RANK_COLORS[0];
-                const width = PYRAMID_WIDTHS[i];
-                const isSelected = selected === rank.level;
+              {sorted.map((level, i) => {
+                const colors = LEVEL_COLORS[i % LEVEL_COLORS.length];
+                const width = PYRAMID_WIDTHS[i] ?? 100;
+                const isSelected = selected === level.id;
                 return (
-                  <div key={rank.level}>
+                  <div key={level.id}>
                     <button
-                      onClick={() => setSelected(isSelected ? null : rank.level)}
+                      onClick={() => setSelected(isSelected ? null : level.id)}
                       className="w-full flex justify-center"
                     >
                       <div
                         className={`flex items-center gap-3 px-4 rounded-lg transition-all border-l-4 ${colors.bg} ${colors.border} ${isSelected ? "ring-2 ring-saffron-400" : "hover:opacity-90"}`}
                         style={{ width: `${width}%`, minWidth: 200, height: 44 }}
                       >
-                        <span className={`text-xs font-bold ${colors.text}`}>{rank.abbr}</span>
-                        <span className="text-xs text-slate-600 dark:text-slate-400 hidden sm:block truncate">{rank.rank}</span>
-                        <span className="ml-auto text-[10px] text-slate-400">{rank.yearsRange}</span>
+                        <span className={`text-xs font-bold ${colors.text} shrink-0`}>L{level.level}</span>
+                        <span className="text-xs text-slate-700 dark:text-slate-300 truncate font-medium">{level.title}</span>
                       </div>
                     </button>
+                    {isSelected && (
+                      <div className={`mt-1 mx-auto card p-4 border-l-4 ${colors.border} ${colors.bg} max-w-2xl`}>
+                        <div className={`text-sm font-bold ${colors.text}`}>{level.title}</div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{level.description}</p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* Selected detail */}
-          {selected && (() => {
-            const rank = IAS_RANKS.find((r) => r.level === selected)!;
-            const colors = RANK_COLORS[rank.level - 1];
-            return (
-              <div className={`card p-6 border-l-4 ${colors.border} ${colors.bg}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className={`font-display font-bold text-base ${colors.text}`}>{rank.rank}</h3>
-                    <div className="text-xs text-slate-500 mt-0.5">{rank.yearsRange}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">{rank.payLevel}</div>
-                    <div className="text-[10px] text-slate-400">{rank.payRange}</div>
-                  </div>
-                </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 mt-3 leading-relaxed">{rank.role}</p>
-                <div className="mt-4 grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold mb-2">Typical Postings</div>
-                    {rank.typicalPostings.map((p) => (
-                      <div key={p} className="flex gap-1.5 items-start text-xs text-slate-600 dark:text-slate-400 mb-1">
-                        <span className={`mt-0.5 shrink-0 ${colors.text}`}>•</span> {p}
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold mb-2">Powers & Functions</div>
-                    {rank.powers.slice(0, 4).map((p) => (
-                      <div key={p} className="flex gap-1.5 items-start text-xs text-slate-600 dark:text-slate-400 mb-1">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`${colors.text} shrink-0 mt-0.5`}>
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        {p}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       ) : (
-        /* Table view */
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Rank</th>
-                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase">Pay Level</th>
-                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase hidden md:table-cell">Years in Service</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Typical Posting</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Level</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase">Title</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase hidden md:table-cell">Description</th>
                 </tr>
               </thead>
               <tbody>
-                {IAS_RANKS.map((rank, i) => {
-                  const colors = RANK_COLORS[i];
+                {sorted.map((level, i) => {
+                  const colors = LEVEL_COLORS[i % LEVEL_COLORS.length];
                   return (
-                    <tr key={rank.level} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <tr key={level.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${colors.bg} border ${colors.border.replace("border-l-", "border-")}`} />
-                          <span className="font-medium text-slate-900 dark:text-slate-100 text-xs">{rank.abbr}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5 hidden sm:block">{rank.rank}</div>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${colors.bg} ${colors.text}`}>L{level.level}</span>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="font-mono text-xs text-slate-700 dark:text-slate-300">{rank.payLevel}</div>
-                        <div className="text-[10px] text-slate-400">{rank.payRange}</div>
+                        <div className="font-medium text-xs text-slate-900 dark:text-slate-100">{level.title}</div>
                       </td>
-                      <td className="py-3 px-3 text-xs text-slate-500 hidden md:table-cell">{rank.yearsRange}</td>
-                      <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-400">{rank.typicalPostings[0]}</td>
+                      <td className="py-3 px-4 text-xs text-slate-500 hidden md:table-cell">{level.description}</td>
                     </tr>
                   );
                 })}
@@ -168,12 +131,10 @@ export function IASHierarchyPanel() {
         </div>
       )}
 
-      {/* Career path note */}
       <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl p-4">
         <div className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-2">IAS — Two tracks, one career</div>
         <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
-          IAS officers alternate between <strong>field postings</strong> (SDM → ADM → Collector → Commissioner) and <strong>secretariat postings</strong> (Deputy Secretary → Director → Joint Secretary → Secretary → Additional Chief Secretary → Chief Secretary at state; or Joint Secretary → Additional Secretary → Secretary at Centre).
-          The same officer might be a District Collector managing 2 million people one year, and drafting national policy as a Joint Secretary in North Block the next. This generalist mobility is the hallmark of the IAS and also its most debated feature.
+          IAS officers alternate between <strong>field postings</strong> (SDM → ADM → Collector → Commissioner) and <strong>secretariat postings</strong> (Deputy Secretary → Director → Joint Secretary → Secretary at Centre or Chief Secretary at State). The same officer might manage 2 million people as a District Collector one year, and draft national policy as Joint Secretary the next.
         </p>
       </div>
     </div>

@@ -1,135 +1,217 @@
 "use client";
 
 import { useState } from "react";
-import { TOPICS, LEVELS, getModule } from "@/data/learn/curriculum";
 import { useLearnStore } from "@/store/learnStore";
-import { ModuleViewer } from "./ModuleViewer";
-import type { Level, Topic } from "@/data/learn/curriculum";
+import type { Level } from "@/data/learn/curriculum";
 
-type DashView = "home" | "module";
+export interface LearningPathDB {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  level: string;
+  estimatedHours: number;
+  color: string;
+  prerequisites: string[];
+  modules: LearningModuleDB[];
+}
+export interface LearningModuleDB {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  content: string;
+  estimatedMinutes: number;
+  order: number;
+}
 
-const LEVEL_ACCENT: Record<Level, string> = {
-  beginner: "#10b981",
-  intermediate: "#3b82f6",
-  advanced: "#8b5cf6",
-  upsc: "#ef4444",
+const LEVEL_CONFIG: Record<string, { label: string; color: string; accent: string; bg: string }> = {
+  beginner:     { label: "Beginner",     color: "text-emerald-600 dark:text-emerald-400", accent: "#10b981", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
+  intermediate: { label: "Intermediate", color: "text-blue-600 dark:text-blue-400",       accent: "#3b82f6", bg: "bg-blue-100 dark:bg-blue-900/30" },
+  advanced:     { label: "Advanced",     color: "text-purple-600 dark:text-purple-400",   accent: "#8b5cf6", bg: "bg-purple-100 dark:bg-purple-900/30" },
+  upsc:         { label: "UPSC",         color: "text-red-600 dark:text-red-400",         accent: "#ef4444", bg: "bg-red-100 dark:bg-red-900/30" },
+  research:     { label: "Research",     color: "text-slate-600 dark:text-slate-400",     accent: "#64748b", bg: "bg-slate-100 dark:bg-slate-800" },
 };
 
-export function LearnDashboard() {
-  const [view, setView] = useState<DashView>("home");
-  const [activeLevel, setActiveLevel] = useState<Level>("beginner");
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+const TYPE_ICON: Record<string, string> = {
+  explainer: "📖",
+  quiz: "🧪",
+  simulation: "🎮",
+  timeline: "📅",
+  case_study: "🔬",
+};
+
+interface Props { paths: LearningPathDB[] }
+
+export function LearnDashboard({ paths }: Props) {
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const { isModuleComplete, getBestScore, getTotalCompleted, reset } = useLearnStore();
+  const { isModuleComplete, markModuleComplete } = useLearnStore();
 
-  const totalModules = TOPICS.length * LEVELS.length;
-  const completed = getTotalCompleted();
-  const pct = Math.round((completed / totalModules) * 100);
+  const activePath = paths.find((p) => p.id === selectedPath);
+  const activeModule = activePath?.modules.find((m) => m.id === selectedModule);
 
-  const filteredTopics = search.trim()
-    ? TOPICS.filter(
-        (t) =>
-          t.name.toLowerCase().includes(search.toLowerCase()) ||
-          t.description.toLowerCase().includes(search.toLowerCase())
+  const filteredPaths = search.trim()
+    ? paths.filter(
+        (p) =>
+          p.title.toLowerCase().includes(search.toLowerCase()) ||
+          p.description.toLowerCase().includes(search.toLowerCase()) ||
+          p.level.toLowerCase().includes(search.toLowerCase())
       )
-    : TOPICS;
+    : paths;
 
-  const handleOpenModule = (topicId: string, level: Level) => {
-    setSelectedTopicId(topicId);
-    setActiveLevel(level);
-    setView("module");
-  };
-
-  // Module view
-  if (view === "module" && selectedTopicId) {
-    const topic = TOPICS.find((t) => t.id === selectedTopicId)!;
-    const module = getModule(selectedTopicId, activeLevel);
-    if (!module) {
-      return (
-        <div className="card p-8 text-center">
-          <div className="text-4xl mb-3">🚧</div>
-          <p className="text-sm text-slate-500">Module not found.</p>
-          <button onClick={() => setView("home")} className="mt-4 px-4 py-2 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">
-            Back
+  if (activeModule && activePath) {
+    const lvl = LEVEL_CONFIG[activePath.level] ?? LEVEL_CONFIG["beginner"];
+    const done = isModuleComplete(activeModule.id, activePath.level as Level);
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedModule(null)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+            ← Back to {activePath.title}
           </button>
         </div>
-      );
-    }
-    return (
-      <ModuleViewer
-        topic={topic}
-        module={module}
-        onBack={() => setView("home")}
-        onLevelChange={(l) => {
-          setActiveLevel(l);
-          setView("module");
-        }}
-      />
+
+        <div className="card p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">{TYPE_ICON[activeModule.type] ?? "📖"}</span>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${lvl.bg} ${lvl.color}`}>{lvl.label}</span>
+              </div>
+              <h2 className="font-display font-bold text-xl text-slate-900 dark:text-slate-100">{activeModule.title}</h2>
+              <div className="text-xs text-slate-400 mt-0.5">~{activeModule.estimatedMinutes} min · Module {activeModule.order} of {activePath.modules.length}</div>
+            </div>
+            {done && (
+              <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                ✓ Completed
+              </span>
+            )}
+          </div>
+
+          {activeModule.description && (
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{activeModule.description}</p>
+          )}
+
+          {activeModule.content ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                {activeModule.content}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center">
+              <div className="text-3xl mb-3">📝</div>
+              <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">{activeModule.title}</div>
+              <p className="text-xs text-slate-400 mt-2">Full content for this module is being prepared and will appear here once published.</p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            {!done && (
+              <button onClick={() => markModuleComplete(activeModule.id, activePath.level as Level)}
+                className="px-4 py-2 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors">
+                Mark Complete
+              </button>
+
+            )}
+            <button onClick={() => setSelectedModule(null)}
+              className="px-4 py-2 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900">
+              Back to modules
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Hero + Stats */}
-      <div className="card p-6 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
-        <div className="flex items-start gap-5 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <h2 className="font-display font-bold text-2xl text-slate-900 dark:text-slate-100 mb-1">
-              Learn Indian Democracy
-            </h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              From Preamble to Parliament — interactive lessons, quizzes, and simulations for every level.
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className="font-display font-bold text-3xl text-slate-900 dark:text-slate-100">{pct}%</div>
-            <div className="text-xs text-slate-400">{completed}/{totalModules} modules done</div>
-          </div>
+  if (activePath) {
+    const lvl = LEVEL_CONFIG[activePath.level] ?? LEVEL_CONFIG["beginner"];
+    const completedCount = activePath.modules.filter((m) => isModuleComplete(m.id, activePath.level as Level)).length;
+    const pct = activePath.modules.length > 0 ? Math.round((completedCount / activePath.modules.length) * 100) : 0;
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setSelectedPath(null); setSelectedModule(null); }}
+            className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+            ← All Paths
+          </button>
         </div>
 
-        {/* Overall progress bar */}
-        <div className="mt-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-saffron-400 to-saffron-600 rounded-full transition-all"
-            style={{ width: `${pct}%` }} />
-        </div>
-
-        {/* Level stats */}
-        <div className="mt-4 grid grid-cols-4 gap-3">
-          {LEVELS.map((lvl) => {
-            const done = TOPICS.filter((t) => isModuleComplete(t.id, lvl.id)).length;
-            return (
-              <div key={lvl.id} className="text-center">
-                <div className="font-display font-bold text-slate-900 dark:text-slate-100 text-base">{done}/{TOPICS.length}</div>
-                <div className={`text-[10px] font-medium ${lvl.color}`}>{lvl.label}</div>
+        <div className="card p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-display font-bold text-lg shrink-0"
+              style={{ backgroundColor: lvl.accent }}>
+              {activePath.level === "beginner" ? "A" : activePath.level === "intermediate" ? "B" : activePath.level === "advanced" ? "C" : activePath.level === "upsc" ? "★" : "R"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-display font-bold text-xl text-slate-900 dark:text-slate-100">{activePath.title}</h2>
+              <p className="text-sm text-slate-500 mt-1">{activePath.description}</p>
+              <div className="flex gap-3 mt-2 text-xs text-slate-400 flex-wrap">
+                <span>{activePath.estimatedHours}h estimated</span>
+                <span>·</span>
+                <span>{activePath.modules.length} modules</span>
+                <span>·</span>
+                <span className={lvl.color}>{lvl.label}</span>
               </div>
+            </div>
+          </div>
+          <div className="mt-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: lvl.accent }} />
+          </div>
+          <div className="text-[10px] text-slate-400 mt-1 text-right">{completedCount}/{activePath.modules.length} complete</div>
+        </div>
+
+        <div className="space-y-2">
+          {[...activePath.modules].sort((a, b) => a.order - b.order).map((mod) => {
+            const done = isModuleComplete(mod.id, activePath.level as Level);
+            return (
+              <button key={mod.id} onClick={() => setSelectedModule(mod.id)}
+                className="w-full card p-4 text-left flex items-center gap-3 hover:shadow-md transition-shadow">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? "bg-emerald-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"}`}>
+                  {done ? "✓" : mod.order}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">{mod.title}</div>
+                  {mod.description && <div className="text-xs text-slate-500 mt-0.5 truncate">{mod.description}</div>}
+                </div>
+                <div className="text-[10px] text-slate-400 shrink-0">{TYPE_ICON[mod.type] ?? "📖"} ~{mod.estimatedMinutes}m</div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400 shrink-0">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
             );
           })}
         </div>
       </div>
+    );
+  }
 
-      {/* Level selector */}
-      <div>
-        <h3 className="text-xs font-semibold text-slate-500 uppercase mb-3">Learning Level</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {LEVELS.map((lvl) => (
-            <button
-              key={lvl.id}
-              onClick={() => setActiveLevel(lvl.id)}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${activeLevel === lvl.id ? "border-current shadow-sm " + lvl.color : "border-transparent bg-slate-100 dark:bg-slate-800/60 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"}`}
-            >
-              <div className={`w-8 h-8 rounded-xl mb-3 flex items-center justify-center text-base font-bold text-white`}
-                style={{ backgroundColor: LEVEL_ACCENT[lvl.id] }}>
-                {lvl.id === "beginner" ? "A" : lvl.id === "intermediate" ? "B" : lvl.id === "advanced" ? "C" : "★"}
-              </div>
-              <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">{lvl.label}</div>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{lvl.description}</p>
-            </button>
-          ))}
+  const totalModules = paths.reduce((s, p) => s + p.modules.length, 0);
+  const completedAll = paths.reduce((s, p) => s + p.modules.filter((m) => isModuleComplete(m.id, p.level as Level)).length, 0);
+  const overallPct = totalModules > 0 ? Math.round((completedAll / totalModules) * 100) : 0;
+
+  return (
+    <div className="space-y-8">
+      <div className="card p-6 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+        <div className="flex items-start gap-5 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <h2 className="font-display font-bold text-2xl text-slate-900 dark:text-slate-100 mb-1">Learn Indian Democracy</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">Choose a learning path to start your civic education journey.</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="font-display font-bold text-3xl text-slate-900 dark:text-slate-100">{overallPct}%</div>
+            <div className="text-xs text-slate-400">{completedAll}/{totalModules} modules done</div>
+          </div>
+        </div>
+        <div className="mt-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-saffron-400 to-saffron-600 rounded-full transition-all"
+            style={{ width: `${overallPct}%` }} />
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
@@ -137,148 +219,59 @@ export function LearnDashboard() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search topics…"
+          placeholder="Search learning paths…"
           className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-saffron-400"
         />
       </div>
 
-      {/* Topic grid */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase">
-            {filteredTopics.length} Topics — {LEVELS.find((l) => l.id === activeLevel)?.label} Level
-          </h3>
-          {completed > 0 && (
-            <button onClick={() => reset()} className="text-[10px] text-red-400 hover:text-red-600 transition-colors">
-              Reset progress
-            </button>
-          )}
+      {paths.length === 0 ? (
+        <div className="card p-8 text-center text-slate-400">
+          <div className="text-4xl mb-3">📚</div>
+          <p className="text-sm">No learning paths found. Run <code className="font-mono text-xs">npm run db:seed</code> to populate.</p>
         </div>
-
+      ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTopics.map((topic) => {
-            const module = getModule(topic.id, activeLevel);
-            const done = isModuleComplete(topic.id, activeLevel);
-            const best = getBestScore(topic.id, activeLevel);
-            const allLevelsDone = LEVELS.every((l) => isModuleComplete(topic.id, l.id));
-
+          {filteredPaths.map((path) => {
+            const lvl = LEVEL_CONFIG[path.level] ?? LEVEL_CONFIG["beginner"];
+            const completedCount = path.modules.filter((m) => isModuleComplete(m.id, path.level as Level)).length;
+            const pct = path.modules.length > 0 ? Math.round((completedCount / path.modules.length) * 100) : 0;
             return (
-              <TopicCard
-                key={topic.id}
-                topic={topic}
-                activeLevel={activeLevel}
-                readingMinutes={module?.readingMinutes}
-                done={done}
-                allDone={allLevelsDone}
-                bestScore={best ? `${best.score}/${best.total}` : undefined}
-                hasQuiz={module?.hasQuiz ?? false}
-                hasTimeline={module?.hasTimeline ?? false}
-                hasSimulation={module?.hasSimulation ?? false}
-                hasExplainer={module?.hasExplainer ?? false}
-                onClick={() => handleOpenModule(topic.id, activeLevel)}
-              />
+              <button key={path.id} onClick={() => setSelectedPath(path.id)}
+                className="card p-5 text-left hover:shadow-lg transition-all active:scale-[0.99]">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-display font-bold shrink-0"
+                    style={{ backgroundColor: lvl.accent }}>
+                    {path.level === "beginner" ? "A" : path.level === "intermediate" ? "B" : path.level === "advanced" ? "C" : path.level === "upsc" ? "★" : "R"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[10px] font-semibold ${lvl.color}`}>{lvl.label}</div>
+                    <div className="font-display font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight">{path.title}</div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-500 leading-relaxed mb-3 line-clamp-2">{path.description}</p>
+
+                <div className="flex gap-3 text-[10px] text-slate-400 mb-3">
+                  <span>{path.modules.length} modules</span>
+                  <span>·</span>
+                  <span>{path.estimatedHours}h</span>
+                  {path.prerequisites.length > 0 && (
+                    <>
+                      <span>·</span>
+                      <span>Req: {path.prerequisites.join(", ")}</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: lvl.accent }} />
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">{completedCount}/{path.modules.length} complete</div>
+              </button>
             );
           })}
         </div>
-      </div>
-
-      {/* Quick access: featured activities */}
-      <div>
-        <h3 className="text-xs font-semibold text-slate-500 uppercase mb-3">Featured Activities</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <FeaturedCard icon="📜" title="Constitution Quiz" desc="Test your knowledge of India's supreme law" color="#D97706"
-            onClick={() => handleOpenModule("constitution", activeLevel)} />
-          <FeaturedCard icon="📅" title="Emergency Timeline" desc="The 1975 Emergency — 12 pivotal events" color="#dc2626"
-            onClick={() => handleOpenModule("emergency", activeLevel)} />
-          <FeaturedCard icon="🎮" title="Bill Simulator" desc="Guide a bill through Parliament step by step" color="#7c3aed"
-            onClick={() => handleOpenModule("legislature", "beginner")} />
-          <FeaturedCard icon="📋" title="RTI Journey" desc="File an RTI and follow it through the system" color="#0891b2"
-            onClick={() => handleOpenModule("rti", "beginner")} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-interface TopicCardProps {
-  topic: Topic;
-  activeLevel: Level;
-  readingMinutes?: number;
-  done: boolean;
-  allDone: boolean;
-  bestScore?: string;
-  hasQuiz: boolean;
-  hasTimeline: boolean;
-  hasSimulation: boolean;
-  hasExplainer: boolean;
-  onClick: () => void;
-}
-
-function TopicCard({ topic, activeLevel, readingMinutes, done, allDone, bestScore, hasQuiz, hasTimeline, hasSimulation, hasExplainer, onClick }: TopicCardProps) {
-  const levelColor = LEVEL_ACCENT[activeLevel];
-
-  return (
-    <button
-      onClick={onClick}
-      className="card p-5 text-left group hover:shadow-md transition-all hover:-translate-y-0.5 relative overflow-hidden"
-    >
-      {/* Completion ribbon */}
-      {allDone && (
-        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs">✓</div>
       )}
-
-      {/* Topic icon + name */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${topic.bg}`}>
-          {topic.icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-display font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{topic.name}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5 leading-snug line-clamp-2">{topic.description}</div>
-        </div>
-      </div>
-
-      {/* Current level badge */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: levelColor }}>
-          {done && <span>✓</span>}
-          {activeLevel.charAt(0).toUpperCase() + activeLevel.slice(1)}
-        </div>
-        {readingMinutes && <span className="text-[10px] text-slate-400">~{readingMinutes} min</span>}
-        {bestScore && <span className="text-[10px] text-slate-400 ml-auto">Quiz: {bestScore}</span>}
-      </div>
-
-      {/* Level progress bar */}
-      <div className="flex gap-1 mb-3">
-        {(["beginner", "intermediate", "advanced", "upsc"] as Level[]).map((l) => (
-          <div key={l} className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: LEVEL_ACCENT[l], opacity: done && l === activeLevel ? 1 : 0.2 }} />
-        ))}
-      </div>
-
-      {/* Feature badges */}
-      <div className="flex gap-1.5 flex-wrap">
-        {hasQuiz && <span className="px-2 py-0.5 text-[10px] rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">Quiz</span>}
-        {hasTimeline && <span className="px-2 py-0.5 text-[10px] rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">Timeline</span>}
-        {hasSimulation && <span className="px-2 py-0.5 text-[10px] rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">Sim</span>}
-        {hasExplainer && <span className="px-2 py-0.5 text-[10px] rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">Explainer</span>}
-      </div>
-    </button>
-  );
-}
-
-function FeaturedCard({ icon, title, desc, color, onClick }: { icon: string; title: string; desc: string; color: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick}
-      className="card p-4 text-left group hover:shadow-md transition-all hover:-translate-y-0.5 flex gap-3 items-start">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: color + "20" }}>
-        <span>{icon}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 leading-snug">{title}</div>
-        <div className="text-[10px] text-slate-400 mt-0.5 leading-snug">{desc}</div>
-      </div>
-    </button>
+    </div>
   );
 }

@@ -1,7 +1,35 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { KEY_CONSTITUENCIES } from "@/data/elections/intelligence";
+interface Constituency { id: number; name: string; state: string; winner: string; winnerParty: string; partyColor: string; votes: number; margin: number; turnout: number; reserved: null | "SC" | "ST" }
+
+const KEY_CONSTITUENCIES: Constituency[] = [
+  { id: 1,  name: "Varanasi",           state: "UP",          winner: "Narendra Modi",         winnerParty: "BJP",   partyColor: "#FF9933", votes: 612970,  margin: 152513,  turnout: 62.0, reserved: null  },
+  { id: 2,  name: "Rae Bareli",         state: "UP",          winner: "Rahul Gandhi",          winnerParty: "INC",   partyColor: "#1565C0", votes: 687649,  margin: 390030,  turnout: 54.0, reserved: null  },
+  { id: 3,  name: "Amethi",             state: "UP",          winner: "K. L. Sharma",          winnerParty: "INC",   partyColor: "#1565C0", votes: 540678,  margin: 167196,  turnout: 55.0, reserved: null  },
+  { id: 4,  name: "Lucknow",            state: "UP",          winner: "Rajnath Singh",         winnerParty: "BJP",   partyColor: "#FF9933", votes: 680078,  margin: 452442,  turnout: 55.0, reserved: null  },
+  { id: 5,  name: "Meerut",             state: "UP",          winner: "Arun Govil",            winnerParty: "BJP",   partyColor: "#FF9933", votes: 623412,  margin: 114979,  turnout: 59.0, reserved: null  },
+  { id: 6,  name: "Azamgarh",           state: "UP",          winner: "Dharmendra Yadav",      winnerParty: "SP",    partyColor: "#EF4444", votes: 515060,  margin: 97499,   turnout: 55.0, reserved: "SC" },
+  { id: 7,  name: "Thiruvananthapuram", state: "Kerala",      winner: "Shashi Tharoor",        winnerParty: "INC",   partyColor: "#1565C0", votes: 358155,  margin: 16077,   turnout: 71.9, reserved: null  },
+  { id: 8,  name: "Wayanad",            state: "Kerala",      winner: "Rahul Gandhi",          winnerParty: "INC",   partyColor: "#1565C0", votes: 648931,  margin: 364422,  turnout: 73.0, reserved: "ST" },
+  { id: 9,  name: "Hyderabad",          state: "Telangana",   winner: "Asaduddin Owaisi",      winnerParty: "AIMIM", partyColor: "#1B5E20", votes: 506082,  margin: 338087,  turnout: 52.0, reserved: null  },
+  { id: 10, name: "Surat",              state: "Gujarat",     winner: "Mukesh Dalal",          winnerParty: "BJP",   partyColor: "#FF9933", votes: 0,       margin: 0,       turnout: 34.0, reserved: null  },
+  { id: 11, name: "Chandigarh",         state: "Chandigarh",  winner: "Manish Tewari",         winnerParty: "INC",   partyColor: "#1565C0", votes: 194765,  margin: 2504,    turnout: 68.3, reserved: null  },
+  { id: 12, name: "Nagpur",             state: "Maharashtra", winner: "Nitin Gadkari",         winnerParty: "BJP",   partyColor: "#FF9933", votes: 679985,  margin: 136893,  turnout: 62.0, reserved: null  },
+  { id: 13, name: "Mumbai North",       state: "Maharashtra", winner: "Piyush Goyal",          winnerParty: "BJP",   partyColor: "#FF9933", votes: 700452,  margin: 420123,  turnout: 61.0, reserved: null  },
+  { id: 14, name: "Bengaluru South",    state: "Karnataka",   winner: "Tejasvi Surya",         winnerParty: "BJP",   partyColor: "#FF9933", votes: 774289,  margin: 200220,  turnout: 65.0, reserved: null  },
+  { id: 15, name: "Patna Sahib",        state: "Bihar",       winner: "Ravi Shankar Prasad",   winnerParty: "BJP",   partyColor: "#FF9933", votes: 598045,  margin: 154118,  turnout: 58.0, reserved: null  },
+  { id: 16, name: "Kolkata North",      state: "West Bengal", winner: "Sudip Bandyopadhyay",   winnerParty: "TMC",   partyColor: "#059669", votes: 613250,  margin: 155140,  turnout: 68.0, reserved: null  },
+  { id: 17, name: "New Delhi",          state: "Delhi",       winner: "Bansuri Swaraj",        winnerParty: "BJP",   partyColor: "#FF9933", votes: 507810,  margin: 78370,   turnout: 56.0, reserved: null  },
+  { id: 18, name: "Bhopal",             state: "MP",          winner: "Alok Sharma",           winnerParty: "BJP",   partyColor: "#FF9933", votes: 879012,  margin: 295245,  turnout: 59.0, reserved: null  },
+  { id: 19, name: "Indore",             state: "MP",          winner: "Shankar Lalwani",       winnerParty: "BJP",   partyColor: "#FF9933", votes: 1174005, margin: 1174005, turnout: 63.0, reserved: null  },
+  { id: 20, name: "Baramulla",          state: "J&K",         winner: "Sheikh Abdul Rashid",   winnerParty: "Ind.", partyColor: "#64748B", votes: 695105,  margin: 204142,  turnout: 62.0, reserved: null  },
+  { id: 21, name: "Bastar",             state: "Chhattisgarh",winner: "Mahesh Kashyap",        winnerParty: "BJP",   partyColor: "#FF9933", votes: 381920,  margin: 6019,    turnout: 74.0, reserved: "ST" },
+  { id: 22, name: "Mandya",             state: "Karnataka",   winner: "Nikhil Kumaraswamy",    winnerParty: "JDS",   partyColor: "#16A34A", votes: 612450,  margin: 166116,  turnout: 80.0, reserved: null  },
+  { id: 23, name: "Coimbatore",         state: "Tamil Nadu",  winner: "Ganapathy P. Rajkumar", winnerParty: "DMK",   partyColor: "#DC143C", votes: 599250,  margin: 141064,  turnout: 68.0, reserved: null  },
+  { id: 24, name: "Srinagar",           state: "J&K",         winner: "Aga S. Ruhullah Mehdi", winnerParty: "NC",    partyColor: "#1A237E", votes: 573872,  margin: 278311,  turnout: 38.0, reserved: null  },
+  { id: 25, name: "Kolkata South",      state: "West Bengal", winner: "Mala Roy",              winnerParty: "TMC",   partyColor: "#059669", votes: 602010,  margin: 167543,  turnout: 65.0, reserved: null  },
+];
 
 type SortKey = "name" | "margin" | "turnout" | "votes";
 

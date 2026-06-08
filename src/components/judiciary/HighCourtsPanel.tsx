@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { HIGH_COURTS, type HighCourtData } from "@/data/judiciary/intelligence";
+import type { CourtDB } from "./JudiciaryDashboard";
 
 const REGIONS = ["All", "North", "South", "East", "West", "Northeast", "Central"] as const;
 type Region = typeof REGIONS[number];
@@ -16,7 +16,7 @@ const REGION_COLORS: Record<string, string> = {
 };
 
 function strengthBar(count: number, max: number) {
-  const pct = Math.round((count / max) * 100);
+  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
     <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden mt-1">
       <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
@@ -24,36 +24,38 @@ function strengthBar(count: number, max: number) {
   );
 }
 
-export function HighCourtsPanel() {
+interface Props { highCourts: CourtDB[] }
+
+export function HighCourtsPanel({ highCourts }: Props) {
   const [region, setRegion] = useState<Region>("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    return HIGH_COURTS.filter((hc) => {
+    return highCourts.filter((hc) => {
       if (region !== "All" && hc.region !== region) return false;
       if (search) {
         const q = search.toLowerCase();
         return hc.name.toLowerCase().includes(q) ||
-          hc.city.toLowerCase().includes(q) ||
+          (hc.city ?? "").toLowerCase().includes(q) ||
           hc.states.some((s) => s.toLowerCase().includes(q));
       }
       return true;
     });
-  }, [region, search]);
+  }, [highCourts, region, search]);
 
-  const maxStrength = Math.max(...HIGH_COURTS.map((h) => h.sanctioned));
-  const sel = selected ? HIGH_COURTS.find((h) => h.id === selected) : null;
+  const maxStrength = Math.max(...highCourts.map((h) => h.sanctioned ?? 0), 1);
 
   const regionCounts = useMemo(() => {
     const m: Record<string, number> = {};
-    HIGH_COURTS.forEach((hc) => { m[hc.region] = (m[hc.region] || 0) + 1; });
+    highCourts.forEach((hc) => {
+      if (hc.region) m[hc.region] = (m[hc.region] || 0) + 1;
+    });
     return m;
-  }, []);
+  }, [highCourts]);
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {(["North", "South", "East", "West", "Northeast", "Central"] as const).map((r) => (
           <button
@@ -67,7 +69,6 @@ export function HighCourtsPanel() {
         ))}
       </div>
 
-      {/* Search + filter bar */}
       <div className="flex gap-3 flex-wrap">
         <input
           type="text"
@@ -91,50 +92,55 @@ export function HighCourtsPanel() {
         </div>
       </div>
 
-      <div className="text-xs text-slate-400">{filtered.length} of 25 High Courts</div>
+      <div className="text-xs text-slate-400">{filtered.length} of {highCourts.length} High Courts</div>
 
-      {/* HC grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((hc) => (
           <button
             key={hc.id}
             onClick={() => setSelected(selected === hc.id ? null : hc.id)}
-            className={`card p-4 text-left transition-all hover:shadow-md ${
-              selected === hc.id ? "ring-2 ring-emerald-400" : ""
-            }`}
+            className={`card p-4 text-left transition-all hover:shadow-md ${selected === hc.id ? "ring-2 ring-emerald-400" : ""}`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight">{hc.name}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{hc.city} · Est. {hc.established}</div>
+                {hc.city && <div className="text-xs text-slate-500 mt-0.5">{hc.city}</div>}
               </div>
-              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${REGION_COLORS[hc.region]}`}>
-                {hc.region}
-              </span>
+              {hc.region && (
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${REGION_COLORS[hc.region] ?? "bg-slate-100 text-slate-500"}`}>
+                  {hc.region}
+                </span>
+              )}
             </div>
 
-            <div className="mt-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Sanctioned</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{hc.sanctioned} judges</span>
+            {hc.sanctioned != null && (
+              <div className="mt-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Sanctioned</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{hc.sanctioned} judges</span>
+                </div>
+                {strengthBar(hc.sanctioned, maxStrength)}
               </div>
-              {strengthBar(hc.sanctioned, maxStrength)}
-            </div>
+            )}
 
-            <div className="mt-2 text-xs text-slate-500 truncate">
-              {hc.states.join(", ")}
-            </div>
+            {hc.states.length > 0 && (
+              <div className="mt-2 text-xs text-slate-500 truncate">
+                {hc.states.join(", ")}
+              </div>
+            )}
 
             {selected === hc.id && (
               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
-                <div>
-                  <div className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Jurisdiction</div>
-                  <div className="flex flex-wrap gap-1">
-                    {hc.states.map((s) => (
-                      <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">{s}</span>
-                    ))}
+                {hc.states.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Jurisdiction</div>
+                    <div className="flex flex-wrap gap-1">
+                      {hc.states.map((s) => (
+                        <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">{s}</span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 {hc.benches.length > 0 && (
                   <div>
                     <div className="text-[10px] text-slate-400 uppercase font-semibold mb-1">Circuit Benches</div>
@@ -145,14 +151,18 @@ export function HighCourtsPanel() {
                     </div>
                   </div>
                 )}
-                <div className="text-[10px] text-amber-700 dark:text-amber-400 italic">{hc.notable}</div>
+                {hc.notable && (
+                  <div className="text-[10px] text-amber-700 dark:text-amber-400 italic">{hc.notable}</div>
+                )}
+                {hc.basis && (
+                  <div className="text-[10px] font-mono text-slate-400">{hc.basis}</div>
+                )}
               </div>
             )}
           </button>
         ))}
       </div>
 
-      {/* Footer note */}
       <div className="text-xs text-slate-400 px-1 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
         <strong className="text-slate-600 dark:text-slate-300">Constitutional Basis:</strong> Art. 214 mandates at least one High Court per state.
         Art. 231 allows Parliament to establish a common HC for two or more states (e.g., Punjab & Haryana).

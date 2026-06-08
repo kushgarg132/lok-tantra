@@ -11,7 +11,14 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:political": "tsx prisma/seed-political.ts",
+    "db:seed:all": "npm run db:seed && npm run db:seed:political",
     "db:studio": "prisma studio",
+    "ingest:es": "tsx scripts/ingest-es.ts",
+    "ingest:es:reset": "tsx scripts/ingest-es.ts -- --reset",
+    "seed:neo4j": "tsx scripts/seed-neo4j.ts",
+    "seed:neo4j:reset": "tsx scripts/seed-neo4j.ts -- --reset",
+    "ingest:all": "npm run db:seed:all && npm run ingest:es && npm run seed:neo4j",
     "worker": "tsx src/worker/index.ts"
   },
   "dependencies": {
@@ -56,6 +63,7 @@
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.0",
+    "dotenv": "^17.4.2",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
     "postcss": "^8.4.0",

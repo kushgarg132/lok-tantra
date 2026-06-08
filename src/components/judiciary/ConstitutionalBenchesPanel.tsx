@@ -1,7 +1,107 @@
 "use client";
 
 import { useState } from "react";
-import { CONSTITUTIONAL_BENCHES } from "@/data/judiciary/intelligence";
+interface ConstitutionalBenchCase {
+  id: string;
+  name: string;
+  year: number;
+  benchSize: number;
+  articles: string[];
+  outcome: string;
+  significance: string;
+  vote?: string;
+  dissentBy?: string;
+  overruled?: boolean;
+}
+
+const CONSTITUTIONAL_BENCHES: ConstitutionalBenchCase[] = [
+  {
+    id: "kesavananda-bench",
+    name: "Kesavananda Bharati v State of Kerala",
+    year: 1973,
+    benchSize: 13,
+    articles: ["13", "368"],
+    outcome: "Basic Structure Doctrine established — Parliament cannot amend the Constitution's essential features",
+    significance: "Largest bench ever assembled; established the most important constitutional doctrine in Indian history. Overruled Golaknath.",
+    vote: "7:6",
+    dissentBy: "CJI A.N. Ray, Justices Dwivedi, Mathew, Beg, Chandrachud (partial)",
+  },
+  {
+    id: "golaknath-bench",
+    name: "I.C. Golak Nath v State of Punjab",
+    year: 1967,
+    benchSize: 11,
+    articles: ["13", "368"],
+    outcome: "Parliament cannot amend fundamental rights under Art. 368 — prospective overruling applied",
+    significance: "11-judge bench sparked constitutional crisis; later overruled by Kesavananda Bharati (1973). Introduced prospective overruling for the first time in India.",
+    vote: "6:5",
+    dissentBy: "Justices Wanchoo, Bachawat, Ramaswami, Mitter, Shelat",
+    overruled: true,
+  },
+  {
+    id: "indra-sawhney-bench",
+    name: "Indra Sawhney v Union of India",
+    year: 1992,
+    benchSize: 9,
+    articles: ["16", "340"],
+    outcome: "OBC reservations valid; 50% ceiling; creamy layer excluded; no reservation in promotions",
+    significance: "Defined affirmative action limits still followed today. The 50% Mandal cap has been challenged many times but always upheld as constitutional.",
+    vote: "6:3",
+    dissentBy: "Justices Pandian, Thommen, Ahmadi (on 50% cap)",
+  },
+  {
+    id: "bommai-bench",
+    name: "S.R. Bommai v Union of India",
+    year: 1994,
+    benchSize: 9,
+    articles: ["356", "74"],
+    outcome: "Presidential Rule subject to judicial review; floor test mandatory; secularism in Basic Structure",
+    significance: "Ended the most abused constitutional provision. Art. 356 had been invoked 100+ times before this judgment; misuse dropped sharply after.",
+    vote: "Majority (6:3 on key questions)",
+  },
+  {
+    id: "puttaswamy-bench",
+    name: "Justice K.S. Puttaswamy v Union of India",
+    year: 2017,
+    benchSize: 9,
+    articles: ["14", "19", "21"],
+    outcome: "Right to privacy is a fundamental right; overruled M.P. Sharma and Kharak Singh",
+    significance: "Unanimous 9-judge verdict on a question unanswered for 63 years. The privacy test (legality, legitimate aim, proportionality, procedural guarantees) is now the standard.",
+    vote: "9:0 (Unanimous)",
+  },
+  {
+    id: "coelho-bench",
+    name: "I.R. Coelho v State of Tamil Nadu",
+    year: 2007,
+    benchSize: 9,
+    articles: ["31B", "9th Schedule", "368"],
+    outcome: "Laws in the Ninth Schedule added after April 24, 1973 (Kesavananda date) can be judicially reviewed if they damage Basic Structure",
+    significance: "Ended the Parliament's strategy of shielding laws from judicial review by placing them in the Ninth Schedule. Post-Kesavananda laws have no blanket immunity.",
+    vote: "Majority",
+  },
+  {
+    id: "navtej-bench",
+    name: "Navtej Singh Johar v Union of India",
+    year: 2018,
+    benchSize: 5,
+    articles: ["14", "15", "19", "21"],
+    outcome: "Section 377 IPC unconstitutional to the extent it criminalises consensual adult same-sex conduct",
+    significance: "Four concurring opinions — each judge wrote separately, reflecting the richness of constitutional reasoning. Constitutional morality > popular morality.",
+    vote: "5:0 (Unanimous)",
+  },
+  {
+    id: "adm-jabalpur-bench",
+    name: "ADM Jabalpur v Shivkant Shukla",
+    year: 1976,
+    benchSize: 5,
+    articles: ["21", "359"],
+    outcome: "Art. 21 (personal liberty) suspended during Emergency under Art. 359 — no right to approach courts",
+    significance: "Called the Supreme Court's darkest hour. Effectively suspended habeas corpus. Justice H.R. Khanna alone dissented and was superseded for CJI. 44th Amendment (1978) made Arts. 20–21 non-suspendable.",
+    vote: "4:1",
+    dissentBy: "Justice H.R. Khanna",
+    overruled: true,
+  },
+];
 
 const BENCH_COLORS: Record<number, { ring: string; bg: string; text: string; dot: string }> = {
   13: { ring: "ring-amber-500",   bg: "bg-amber-50 dark:bg-amber-950/20",   text: "text-amber-700 dark:text-amber-300",   dot: "bg-amber-500" },
@@ -105,7 +205,7 @@ export function ConstitutionalBenchesPanel() {
 }
 
 function BenchCard({ bench, selected, onSelect }: {
-  bench: typeof CONSTITUTIONAL_BENCHES[0];
+  bench: ConstitutionalBenchCase;
   selected: string | null;
   onSelect: (id: string | null) => void;
 }) {

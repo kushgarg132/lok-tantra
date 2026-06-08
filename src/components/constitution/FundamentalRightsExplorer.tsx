@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ARTICLES_DATA } from "@/data/constitution/articles-data";
+import type { ArticleDTO } from "./ConstitutionExplorer";
 
 const FR_GROUPS = [
   {
@@ -131,7 +131,9 @@ const WRITS = [
   },
 ];
 
-export function FundamentalRightsExplorer() {
+interface Props { articles: ArticleDTO[] }
+
+export function FundamentalRightsExplorer({ articles }: Props) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
   const [showWrits, setShowWrits] = useState(false);
@@ -139,7 +141,7 @@ export function FundamentalRightsExplorer() {
   const currentGroup = FR_GROUPS.find((g) => g.id === selectedGroup);
   const groupArticles = currentGroup
     ? currentGroup.articles
-        .map((n) => ARTICLES_DATA.find((a) => a.number === n))
+        .map((n) => articles.find((a) => a.number === n))
         .filter(Boolean)
     : [];
 

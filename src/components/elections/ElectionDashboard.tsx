@@ -10,15 +10,28 @@ import { RajyaSabhaPanel } from "./RajyaSabhaPanel";
 import { StateElectionPanel } from "./StateElectionPanel";
 import { ConstituencyPanel } from "./ConstituencyPanel";
 
-// ─── Types from DB (kept for backward compat) ────────────────────────────────
-interface PartyResult { party: string; color: string; seats: number; voteShare: number | null }
-interface ElectionHistoryItem { year: number; totalSeats: number; majorWinner: string; majorSeats: number; turnout: number | null }
-interface StateSeat { name: string; total: number; reservedSC: number; reservedST: number }
+export interface PartyResult { party: string; color: string; seats: number; voteShare: number | null }
+export interface ElectionHistoryItem { year: number; totalSeats: number; majorWinner: string; majorSeats: number; turnout: number }
+export interface PartyYearRow { year: number; seats: number; voteShare: number }
+export interface StateResult {
+  state: string; code: string; seats: number; dominant: string; dominantColor: string;
+  dominantSeats: number; alliance: "NDA" | "INDIA" | "Other"; turnout: number;
+  ndaSeats: number; indiaSeats: number; otherSeats: number;
+}
+
+export interface AssemblyElection {
+  state: string; year: number; totalSeats: number;
+  winner: string; winnerColor: string; winnerSeats: number;
+  runnerUp: string; runnerUpSeats: number; turnout: number;
+}
 
 interface Props {
   currentResults: PartyResult[];
   electionHistory: ElectionHistoryItem[];
-  stateSeats: StateSeat[];
+  partyHistory: Record<string, PartyYearRow[]>;
+  stateElectionResults: StateResult[];
+  assemblyElections: AssemblyElection[];
+  latestYear: number;
 }
 
 type TabId = "parliament" | "states" | "coalitions" | "history" | "voteShare" | "turnout" | "rajyaSabha" | "constituencies";
@@ -34,32 +47,30 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "constituencies", label: "Constituencies",icon: "🔍" },
 ];
 
-export function ElectionDashboard({ currentResults, electionHistory, stateSeats }: Props) {
+export function ElectionDashboard({ currentResults, electionHistory, partyHistory, stateElectionResults, assemblyElections, latestYear }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("parliament");
 
-  // Use DB data when available, otherwise fall back to static
-  const current2024 = currentResults.length > 0 ? currentResults : null;
-  const latestYear = electionHistory.length > 0 ? Math.max(...electionHistory.map(h => h.year)) : 2024;
+  const latest = electionHistory[electionHistory.length - 1];
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-8">
-      {/* Quick stats */}
+      {/* Quick stats from DB */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="card p-5 text-center">
-          <div className="text-3xl font-display font-bold text-slate-900 dark:text-slate-100">543</div>
+          <div className="text-3xl font-display font-bold text-slate-900 dark:text-slate-100">{latest?.totalSeats ?? 543}</div>
           <div className="text-xs text-slate-500 mt-1">Lok Sabha Seats</div>
         </div>
         <div className="card p-5 text-center">
-          <div className="text-3xl font-display font-bold text-saffron-500">293</div>
-          <div className="text-xs text-slate-500 mt-1">NDA Seats (2024)</div>
+          <div className="text-3xl font-display font-bold text-saffron-500">{latest?.majorSeats ?? "—"}</div>
+          <div className="text-xs text-slate-500 mt-1">{latest?.majorWinner ?? "BJP"} Seats ({latestYear})</div>
         </div>
         <div className="card p-5 text-center">
           <div className="text-3xl font-display font-bold text-slate-900 dark:text-slate-100">245</div>
           <div className="text-xs text-slate-500 mt-1">Rajya Sabha Seats</div>
         </div>
         <div className="card p-5 text-center">
-          <div className="text-3xl font-display font-bold text-slate-900 dark:text-slate-100">65.8%</div>
-          <div className="text-xs text-slate-500 mt-1">2024 Turnout</div>
+          <div className="text-3xl font-display font-bold text-slate-900 dark:text-slate-100">{latest?.turnout ?? 65.8}%</div>
+          <div className="text-xs text-slate-500 mt-1">{latestYear} Turnout</div>
         </div>
       </div>
 
@@ -83,42 +94,15 @@ export function ElectionDashboard({ currentResults, electionHistory, stateSeats 
         </div>
       </div>
 
-      {/* Panel */}
-      {activeTab === "parliament" && <LokSabhaMap />}
-      {activeTab === "states" && <StateElectionPanel />}
-      {activeTab === "coalitions" && <CoalitionPanel />}
-      {activeTab === "history" && <PartyTracker />}
-      {activeTab === "voteShare" && <VoteSharePanel />}
-      {activeTab === "turnout" && <TurnoutPanel />}
-      {activeTab === "rajyaSabha" && <RajyaSabhaPanel />}
+      {/* Panels — each receives its data from DB via props */}
+      {activeTab === "parliament"     && <LokSabhaMap parties={currentResults} stateResults={stateElectionResults} />}
+      {activeTab === "states"         && <StateElectionPanel assemblyElections={assemblyElections} />}
+      {activeTab === "coalitions"     && <CoalitionPanel />}
+      {activeTab === "history"        && <PartyTracker partyHistory={partyHistory} electionHistory={electionHistory} />}
+      {activeTab === "voteShare"      && <VoteSharePanel currentResults={currentResults} partyHistory={partyHistory} latestYear={latestYear} />}
+      {activeTab === "turnout"        && <TurnoutPanel stateResults={stateElectionResults} electionHistory={electionHistory} />}
+      {activeTab === "rajyaSabha"     && <RajyaSabhaPanel />}
       {activeTab === "constituencies" && <ConstituencyPanel />}
-
-      {/* Legacy DB-backed current results (when DB is seeded) */}
-      {activeTab === "parliament" && current2024 && current2024.length > 0 && (
-        <div className="mt-8 card p-6">
-          <h3 className="font-display font-bold text-lg text-slate-900 dark:text-slate-100 mb-4">
-            DB Party Results — {latestYear}
-          </h3>
-          <div className="h-10 rounded-xl overflow-hidden flex">
-            {current2024.map((p) => (
-              <div key={p.party}
-                className="h-full relative group flex items-center justify-center"
-                style={{ width: `${(p.seats / 543) * 100}%`, backgroundColor: p.color, minWidth: p.seats > 5 ? "auto" : "3px" }}>
-                {p.seats >= 20 && (
-                  <span className="text-[10px] font-bold text-white drop-shadow-sm">{p.party} ({p.seats})</span>
-                )}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-slate-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-10">
-                  {p.party}: {p.seats} seats · {p.voteShare ?? 0}%
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="relative h-4 mt-0.5">
-            <div className="absolute top-0 w-px h-4 bg-red-400" style={{ left: `${(272 / 543) * 100}%` }} />
-            <span className="absolute text-[9px] text-red-400 -translate-x-1/2 top-0.5" style={{ left: `${(272 / 543) * 100}%` }}>272</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

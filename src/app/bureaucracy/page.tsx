@@ -8,20 +8,14 @@ export const metadata: Metadata = {
 };
 
 export default async function BureaucracyPage() {
-  let dbStats = { officials: 0, departments: 0 };
-  try {
-    const [officials, departments] = await Promise.all([
-      prisma.bureaucraticLevel.count(),
-      prisma.ministry.count(),
-    ]);
-    dbStats = { officials, departments };
-  } catch {
-    // DB not seeded — static data used
-  }
+  const [levels, services, ministryCount] = await Promise.all([
+    prisma.bureaucraticLevel.findMany({ orderBy: [{ hierarchy: "asc" }, { level: "asc" }] }).catch(() => []),
+    prisma.civilService.findMany({ orderBy: { name: "asc" } }).catch(() => []),
+    prisma.ministry.count().catch(() => 0),
+  ]);
 
   return (
     <div className="min-h-screen">
-      {/* Hero */}
       <section className="bg-gradient-to-b from-slate-100 to-white dark:from-slate-900 dark:to-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-10 md:py-14">
           <div className="flex flex-wrap gap-2 mb-4">
@@ -53,9 +47,8 @@ export default async function BureaucracyPage() {
         </div>
       </section>
 
-      {/* Dashboard */}
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-8">
-        <BureaucracyDashboard dbStats={dbStats} />
+        <BureaucracyDashboard levels={levels} services={services} ministryCount={ministryCount} />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { ScraperHealth } from "@/lib/observability/scraper-run";
 
 const STATUS_STYLES: Record<ScraperHealth["status"], string> = {
@@ -40,10 +41,27 @@ function fmtAge(date: Date | null): string {
 }
 
 interface Props {
-  health: ScraperHealth[];
+  health:    ScraperHealth[];
+  onRefresh?: () => void;
 }
 
-export default function ScraperHealthGrid({ health }: Props) {
+export default function ScraperHealthGrid({ health, onRefresh }: Props) {
+  const [runningSource, setRunningSource] = useState<string | null>(null);
+  const [queued,        setQueued]        = useState<Set<string>>(new Set());
+
+  async function triggerRun(source: string) {
+    setRunningSource(source);
+    try {
+      const res = await fetch(`/api/admin/scrapers/${source}/run`, { method: "POST" });
+      if (res.ok) {
+        setQueued((prev) => new Set(prev).add(source));
+        onRefresh?.();
+      }
+    } finally {
+      setRunningSource(null);
+    }
+  }
+
   if (health.length === 0) {
     return (
       <div className="rounded-xl border border-slate-700 bg-slate-800/30 p-8 text-center text-slate-500 text-sm">
@@ -54,51 +72,66 @@ export default function ScraperHealthGrid({ health }: Props) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {health.map((h) => (
-        <div
-          key={h.source}
-          className={`rounded-xl border p-4 flex flex-col gap-2 ${STATUS_STYLES[h.status]}`}
-        >
-          <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[h.status]}`} />
-            <span className="font-semibold text-sm text-slate-200 truncate">
-              {SOURCE_LABELS[h.source] ?? h.source}
-            </span>
-            <span className="ml-auto text-xs capitalize text-slate-400">{h.status}</span>
-          </div>
+      {health.map((h) => {
+        const isRunning = runningSource === h.source;
+        const wasQueued = queued.has(h.source);
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-400 mt-1">
-            <span>Last success</span>
-            <span className="text-right text-slate-300">{fmtAge(h.lastSuccess)}</span>
+        return (
+          <div
+            key={h.source}
+            className={`rounded-xl border p-4 flex flex-col gap-2 ${STATUS_STYLES[h.status]}`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[h.status]}`} />
+              <span className="font-semibold text-sm text-slate-200 truncate">
+                {SOURCE_LABELS[h.source] ?? h.source}
+              </span>
+              <span className="ml-auto text-xs capitalize text-slate-400">{h.status}</span>
+            </div>
 
-            <span>Success rate</span>
-            <span className={`text-right font-medium ${h.successRate >= 0.9 ? "text-emerald-400" : h.successRate >= 0.6 ? "text-amber-400" : "text-red-400"}`}>
-              {(h.successRate * 100).toFixed(0)}%
-            </span>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-400 mt-1">
+              <span>Last success</span>
+              <span className="text-right text-slate-300">{fmtAge(h.lastSuccess)}</span>
 
-            <span>Avg duration</span>
-            <span className="text-right text-slate-300">
-              {h.avgDurationMs > 0 ? fmt(h.avgDurationMs) : "—"}
-            </span>
+              <span>Success rate</span>
+              <span className={`text-right font-medium ${h.successRate >= 0.9 ? "text-emerald-400" : h.successRate >= 0.6 ? "text-amber-400" : "text-red-400"}`}>
+                {(h.successRate * 100).toFixed(0)}%
+              </span>
 
-            <span>Runs (24h)</span>
-            <span className="text-right text-slate-300">{h.runsLast24h}</span>
+              <span>Avg duration</span>
+              <span className="text-right text-slate-300">
+                {h.avgDurationMs > 0 ? fmt(h.avgDurationMs) : "—"}
+              </span>
 
-            {h.consecutiveFailures > 0 && (
-              <>
-                <span className="text-red-400">Consecutive fails</span>
-                <span className="text-right text-red-400 font-bold">{h.consecutiveFailures}</span>
-              </>
+              <span>Runs (24h)</span>
+              <span className="text-right text-slate-300">{h.runsLast24h}</span>
+
+              {h.consecutiveFailures > 0 && (
+                <>
+                  <span className="text-red-400">Consecutive fails</span>
+                  <span className="text-right text-red-400 font-bold">{h.consecutiveFailures}</span>
+                </>
+              )}
+            </div>
+
+            {h.lastError && (
+              <p className="mt-1 text-xs text-red-300 truncate" title={h.lastError.message}>
+                ⚠ {h.lastError.message ?? "Unknown error"}
+              </p>
             )}
-          </div>
 
-          {h.lastError && (
-            <p className="mt-1 text-xs text-red-300 truncate" title={h.lastError.message}>
-              ⚠ {h.lastError.message ?? "Unknown error"}
-            </p>
-          )}
-        </div>
-      ))}
+            <button
+              onClick={() => triggerRun(h.source)}
+              disabled={isRunning}
+              className="mt-1 w-full py-1 rounded text-xs font-medium transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed
+                bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600"
+            >
+              {isRunning ? "Queuing…" : wasQueued ? "Queued ✓" : "Run"}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

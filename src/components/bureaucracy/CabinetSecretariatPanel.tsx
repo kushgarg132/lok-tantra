@@ -1,7 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { CABINET_SECRETARIAT, MINISTRY_CLUSTERS } from "@/data/bureaucracy/intelligence";
+interface MinistryCluster { cluster: string; color: string; ministries: string[] }
+
+const MINISTRY_CLUSTERS: MinistryCluster[] = [
+  { cluster: "Core Governance",    color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",    ministries: ["Prime Minister's Office", "Ministry of Home Affairs", "Ministry of Finance", "Ministry of External Affairs", "Ministry of Law & Justice", "Ministry of Defence"] },
+  { cluster: "Economy & Industry", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",    ministries: ["Ministry of Commerce & Industry", "Ministry of MSME", "Ministry of Corporate Affairs", "Ministry of Statistics & PI", "Ministry of Consumer Affairs"] },
+  { cluster: "Infrastructure",     color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", ministries: ["Ministry of Railways", "Ministry of Road Transport", "Ministry of Ports & Shipping", "Ministry of Civil Aviation", "Ministry of Housing & Urban Affairs", "Ministry of Jal Shakti", "Ministry of Power", "Ministry of Petroleum & NG"] },
+  { cluster: "Agriculture & Rural",color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", ministries: ["Ministry of Agriculture & FW", "Ministry of Rural Development", "Ministry of Panchayati Raj", "Ministry of Fisheries", "Ministry of Food Processing"] },
+  { cluster: "Social Sectors",     color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",    ministries: ["Ministry of Health & Family Welfare", "Ministry of Education", "Ministry of Women & Child Development", "Ministry of Social Justice", "Ministry of Labour & Employment"] },
+  { cluster: "Technology & Science",color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300", ministries: ["Ministry of Electronics & IT (MeitY)", "Department of Science & Technology", "Department of Space (ISRO)", "Ministry of Atomic Energy (DAE)"] },
+];
+
+const CABINET_SECRETARIAT = {
+  roles: [
+    { title: "Cabinet Secretary",                  desc: "Presides over Secretaries' Committee; coordinates Cabinet; seniormost civil servant" },
+    { title: "Additional Cabinet Secretary",        desc: "Assists in coordination; manages Cabinet Committees' secretarial work" },
+    { title: "Secretaries (Cabinet Committees)",   desc: "Secretaries to CCEA, CCS, CCI, CCLST and other Cabinet Committees" },
+    { title: "Director (Cabinet)",                 desc: "Prepares Cabinet agenda, notes, and records decisions" },
+    { title: "OSD (Cabinet)",                      desc: "Officers on Special Duty for specific Cabinet functions" },
+  ],
+  cabinetCommittees: [
+    { name: "CCS",   full: "Cabinet Committee on Security",               desc: "Defence, national security, nuclear policy, intelligence. Chaired by PM." },
+    { name: "CCEA",  full: "Cabinet Committee on Economic Affairs",       desc: "Major economic decisions, PSU pricing, MSP, investment approvals. Chaired by PM." },
+    { name: "CCI",   full: "Cabinet Committee on Investment",             desc: "Major project approvals and investment facilitation." },
+    { name: "CCA",   full: "Cabinet Committee on Accommodation",          desc: "Government residential accommodation." },
+    { name: "CCLST", full: "Cabinet Committee on Employment & Skill Dev.",desc: "Employment and livelihood policies." },
+    { name: "CCG",   full: "Cabinet Committee on Political Affairs",      desc: "Major political/governance decisions. Chaired by PM." },
+  ],
+  keyFunctions: [
+    "Secretarial assistance to the Cabinet and its Committees",
+    "Coordination between ministries on inter-ministerial matters",
+    "Management of Crisis Management Group (CMG) for national emergencies",
+    "Administration of IAS, IPS, and IFoS (through DOPT which is under PMO/Cabinet Secretary)",
+    "Coordination with the President's Secretariat and Vice President's office",
+    "National Archives and official records preservation",
+  ],
+};
 
 const CC_COLORS: Record<string, string> = {
   CCS: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-400",

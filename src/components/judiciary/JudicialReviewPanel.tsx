@@ -1,14 +1,56 @@
 "use client";
 
 import { useState } from "react";
-import { JUDICIAL_REVIEW_POWERS, WRITS } from "@/data/judiciary/intelligence";
+import type { WritDB } from "./JudiciaryDashboard";
+
+const JUDICIAL_REVIEW_POWERS = [
+  {
+    article: "Art. 13",
+    title: "Void Laws — Fundamental Rights",
+    court: "both" as const,
+    description: "Any law (pre or post-Constitution) inconsistent with or in abridgement of Fundamental Rights is void to the extent of inconsistency. Established the supremacy of Part III.",
+    grounds: ["Violates a Fundamental Right", "Made by a legislature without competence", "Arbitrary or manifestly unreasonable (Art. 14)"],
+    landmark: "A.K. Gopalan v State of Madras (1950) — first major test of Art. 21 scope",
+  },
+  {
+    article: "Art. 32",
+    title: "Right to Constitutional Remedies",
+    court: "sc" as const,
+    description: "The Supreme Court has power to issue directions, orders, or writs for enforcement of Fundamental Rights. Dr. Ambedkar called Art. 32 the 'heart and soul of the Constitution'.",
+    grounds: ["Violation of any Fundamental Right (Art. 12–35)", "State action infringing liberty/equality", "PIL for diffuse public rights"],
+    landmark: "Maneka Gandhi v Union of India (1978) — expanded Art. 21 to include due process",
+  },
+  {
+    article: "Art. 131–136",
+    title: "Original & Appellate Jurisdiction",
+    court: "sc" as const,
+    description: "Art. 131 gives SC original jurisdiction in Centre–State/State–State disputes. Art. 132–135 set up appellate jurisdiction. Art. 136 grants sweeping special leave to appeal from any court or tribunal.",
+    grounds: ["Centre–State constitutional dispute", "Substantial question of law as to interpretation of Constitution", "Any judgment by any court (SLP under Art. 136)"],
+    landmark: "State of Rajasthan v Union of India (1977) — limits on Presidential dissolution power",
+  },
+  {
+    article: "Art. 143",
+    title: "Advisory Jurisdiction",
+    court: "sc" as const,
+    description: "President can refer questions of law or fact of public importance to SC for its opinion. SC may or may not give an opinion — it is advisory, not binding.",
+    grounds: ["Question of public importance", "Question involving interpretation of Constitution", "Request by President of India"],
+    landmark: "In Re Special Reference No. 1 of 2012 (2G Spectrum case advisory reference)",
+  },
+  {
+    article: "Art. 226",
+    title: "High Court Writ Jurisdiction",
+    court: "hc" as const,
+    description: "High Courts can issue writs not only for Fundamental Rights enforcement (like SC under Art. 32) but also for any other purpose — giving wider jurisdiction than the SC.",
+    grounds: ["Violation of Fundamental Rights", "Any other legal right", "Ultra vires administrative action", "Excess or lack of jurisdiction"],
+    landmark: "Bandhua Mukti Morcha v Union of India (1984) — expanded PIL to HCs",
+  },
+];
 
 const COURT_BADGE = {
   sc:   "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   hc:   "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
   both: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
 };
-
 const COURT_LABEL = { sc: "Supreme Court", hc: "High Court", both: "SC & HC" };
 
 const WRIT_COLORS = [
@@ -19,13 +61,14 @@ const WRIT_COLORS = [
   { bg: "bg-teal-50 dark:bg-teal-950/20",     border: "border-teal-400",     text: "text-teal-800 dark:text-teal-300",     sub: "text-teal-600 dark:text-teal-400" },
 ];
 
-export function JudicialReviewPanel() {
+interface Props { writs: WritDB[] }
+
+export function JudicialReviewPanel({ writs }: Props) {
   const [activeReview, setActiveReview] = useState<string | null>(null);
-  const [activeWrit, setActiveWrit] = useState<number | null>(null);
+  const [activeWrit, setActiveWrit] = useState<string | null>(null);
 
   return (
     <div className="space-y-8">
-      {/* Basic Structure explainer */}
       <div className="card p-6 border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/20">
         <div className="flex items-start gap-3">
           <div className="text-3xl">🏛️</div>
@@ -37,16 +80,9 @@ export function JudicialReviewPanel() {
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
               {[
-                "Supremacy of the Constitution",
-                "Republican & democratic form of govt",
-                "Secularism",
-                "Separation of powers",
-                "Federal character",
-                "Judicial review",
-                "Free & fair elections",
-                "Fundamental rights",
-                "Unity & sovereignty of India",
-                "Rule of law",
+                "Supremacy of the Constitution", "Republican & democratic form of govt", "Secularism",
+                "Separation of powers", "Federal character", "Judicial review",
+                "Free & fair elections", "Fundamental rights", "Unity & sovereignty of India", "Rule of law",
               ].map((feature) => (
                 <span key={feature} className="px-2 py-0.5 text-xs rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                   {feature}
@@ -57,7 +93,6 @@ export function JudicialReviewPanel() {
         </div>
       </div>
 
-      {/* Judicial Review Powers */}
       <div>
         <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-4">Review Powers by Article</h3>
         <div className="space-y-3">
@@ -88,11 +123,9 @@ export function JudicialReviewPanel() {
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </div>
-
                 <p className={`mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed ${isActive ? "" : "line-clamp-2"}`}>
                   {power.description}
                 </p>
-
                 {isActive && (
                   <div className="mt-4 space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <div>
@@ -119,43 +152,36 @@ export function JudicialReviewPanel() {
         </div>
       </div>
 
-      {/* Five Writs */}
-      <div>
-        <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-4">The Five Constitutional Writs</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {WRITS.map((writ, i) => {
-            const colors = WRIT_COLORS[i % WRIT_COLORS.length];
-            const isActive = activeWrit === i;
-            return (
-              <button
-                key={writ.name}
-                onClick={() => setActiveWrit(isActive ? null : i)}
-                className={`card p-5 text-left border-l-4 ${colors.border} ${colors.bg} transition-all hover:shadow-md ${isActive ? "ring-2 ring-saffron-400" : ""}`}
-              >
-                <h4 className={`font-display font-bold text-base ${colors.text}`}>{writ.name}</h4>
-                <p className={`text-xs italic mt-0.5 ${colors.sub}`}>&ldquo;{writ.latin}&rdquo;</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed line-clamp-2">{writ.purpose}</p>
-
-                {isActive && (
-                  <div className="mt-3 pt-3 border-t border-current border-opacity-20 space-y-2">
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Issued Against</div>
-                      <div className="text-xs text-slate-700 dark:text-slate-300">{writ.against}</div>
+      {writs.length > 0 && (
+        <div>
+          <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-4">The Five Constitutional Writs</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {writs.map((writ, i) => {
+              const colors = WRIT_COLORS[i % WRIT_COLORS.length];
+              const isActive = activeWrit === writ.id;
+              return (
+                <button
+                  key={writ.id}
+                  onClick={() => setActiveWrit(isActive ? null : writ.id)}
+                  className={`card p-5 text-left border-l-4 ${colors.border} ${colors.bg} transition-all hover:shadow-md ${isActive ? "ring-2 ring-saffron-400" : ""}`}
+                >
+                  <h4 className={`font-display font-bold text-base ${colors.text}`}>{writ.name}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed line-clamp-2">{writ.meaning}</p>
+                  {isActive && (
+                    <div className="mt-3 pt-3 border-t border-current border-opacity-20 space-y-2">
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Usage</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400">{writ.usage}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Example</div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400">{writ.example}</div>
-                    </div>
-                    <div className="font-mono text-[10px] text-slate-400">{writ.article}</div>
-                  </div>
-                )}
-              </button>
-            );
-          })}
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Comparison note */}
       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5">
         <h4 className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-3">Judicial Review — India vs. USA</h4>
         <div className="grid sm:grid-cols-2 gap-4 text-xs">
@@ -176,7 +202,7 @@ export function JudicialReviewPanel() {
               <li>• Cannot review constitutional amendments</li>
               <li>• Only SCOTUS has federal constitutional review</li>
               <li>• No equivalent of Art. 32/226 writ jurisdiction</li>
-              <li>• No PIL — requires "standing" doctrine</li>
+              <li>• No PIL — requires &ldquo;standing&rdquo; doctrine</li>
             </ul>
           </div>
         </div>

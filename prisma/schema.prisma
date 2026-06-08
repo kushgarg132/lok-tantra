@@ -538,6 +538,44 @@ model PartyElectionResult {
   @@index([year, type])
 }
 
+// State-wise election results per year
+model StateElectionResult {
+  id          String  @id @default(cuid())
+  year        Int
+  type        String  // "lok_sabha" | "assembly"
+  state       String
+  code        String
+  seats       Int
+  dominant    String
+  dominantColor String
+  dominantSeats Int
+  alliance    String  // "NDA" | "INDIA" | "Other"
+  turnout     Float
+  ndaSeats    Int     @default(0)
+  indiaSeats  Int     @default(0)
+  otherSeats  Int     @default(0)
+
+  @@unique([year, type, state])
+  @@index([year, type])
+}
+
+// State assembly election results
+model StateAssemblyElection {
+  id            String @id @default(cuid())
+  state         String
+  year          Int
+  totalSeats    Int
+  winner        String
+  winnerColor   String
+  winnerSeats   Int
+  runnerUp      String
+  runnerUpSeats Int
+  turnout       Float
+
+  @@unique([state, year])
+  @@index([year])
+}
+
 // [NEW] PIN Code Mapping
 model PinCode {
   id             String       @id @default(cuid())
@@ -586,21 +624,31 @@ model ElectionCandidate {
 // ─── JUDICIARY ───────────────────────────────────────────────
 
 model Court {
-  id           String         @id @default(cuid())
-  name         String         @unique
-  type         String
-  jurisdiction String?
-  stateCode    String?
-  established  Int?
-  establishedOn DateTime?     // [NEW] Temporal
-  judges       String?
-  basis        String?
-  description  String?
-  powers       String[]
-  logoUrl      String?
+  id             String         @id @default(cuid())
+  name           String         @unique
+  type           String
+  jurisdiction   String?
+  stateCode      String?
+  established    Int?
+  establishedOn  DateTime?
+  judges         String?
+  basis          String?
+  description    String?
+  powers         String[]
+  logoUrl        String?
   mediaUpdatedAt DateTime?
-  cases        LandmarkCase[]
-  createdAt    DateTime       @default(now())
+  // Hierarchy fields
+  courtCount     String?        // "1", "25", etc.
+  courtChildren  String[]       // slugs of child court types
+  // High court specific
+  city           String?
+  states         String[]
+  region         String?
+  benches        String[]
+  sanctioned     Int?
+  notable        String?
+  cases          LandmarkCase[]
+  createdAt      DateTime       @default(now())
 }
 
 model LandmarkCase {

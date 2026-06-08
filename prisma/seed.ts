@@ -95,7 +95,8 @@ async function main() {
   ];
   const personMap: Record<string, string> = {};
   for (const p of peopleData) {
-    const person = await prisma.person.create({
+    const existing = await prisma.person.findFirst({ where: { name: p.name } });
+    const person = existing ?? await prisma.person.create({
       data: {
         name: p.name,
         designation: p.designation,
@@ -205,10 +206,42 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════
   console.log("  Seeding courts & landmark cases...");
   const courtsData = [
-    { name: "Supreme Court of India", type: "apex", basis: "Art. 124-147", judges: "34 (CJI + 33)", jurisdiction: "Original, Appellate, Advisory", description: "The guardian of the Constitution and highest court of appeal. Its decisions are binding on all courts in India.", powers: ["Original jurisdiction in Centre-State disputes (Art. 131)", "Appellate jurisdiction — civil, criminal, constitutional (Art. 132-136)", "Writ jurisdiction for Fundamental Rights (Art. 32)", "Advisory jurisdiction (Art. 143)", "Court of Record (Art. 129)", "Judicial review — can strike down unconstitutional laws", "Special Leave Petition (Art. 136)"] },
-    { name: "High Courts", type: "state", basis: "Art. 214-231", judges: "Varies by state", jurisdiction: "Original, Appellate, Supervisory", description: "Each state has a High Court. They have wider writ jurisdiction than the Supreme Court.", powers: ["Writ jurisdiction — wider than SC (Art. 226)", "Appellate jurisdiction over subordinate courts", "Supervisory jurisdiction (Art. 227)", "Court of Record (Art. 215)"] },
-    { name: "District & Sessions Courts", type: "district", basis: "Art. 233-237", judges: "District Judge + Additional Judges", jurisdiction: "Original (civil & criminal)", description: "Principal courts of original jurisdiction at the district level.", powers: ["Original civil jurisdiction", "Sessions Court — serious criminal offenses", "Appellate jurisdiction over lower courts"] },
-    { name: "Subordinate Courts", type: "subordinate", basis: "State legislation", judges: "Magistrates, Munsifs", jurisdiction: "Original (lower-value cases)", description: "Civil Judge courts, Judicial Magistrate courts, and tribunals at sub-district level.", powers: ["Civil Judge — suits below District Court limits", "Judicial Magistrate — less serious offenses", "Small Causes Courts"] },
+    { name: "Supreme Court of India", type: "supreme", basis: "Art. 124–147", judges: "CJI + 33 Judges (sanctioned: 34)", jurisdiction: "Whole of India — original, appellate, advisory", description: "The guardian of the Constitution and highest court of appeal. Its decisions are binding on all courts in India.", powers: ["Original jurisdiction in inter-state and Centre–State disputes (Art. 131)", "Appellate jurisdiction via SLP (Art. 136)", "Constitutional interpretation (Art. 132–134)", "Advisory jurisdiction (Presidential Reference, Art. 143)", "Judicial review of legislation under Art. 13", "Enforcement of Fundamental Rights (Art. 32)", "Complete justice under Art. 142"], courtCount: "1", courtChildren: ["hc", "ngt", "nclt", "cat"] },
+    { name: "High Courts (25)", type: "high", basis: "Art. 214–231", judges: "Varies — Allahabad (160) to Sikkim (3)", jurisdiction: "Each state/UT — original, appellate, supervisory", description: "Each state has a High Court. They have wider writ jurisdiction than the Supreme Court.", powers: ["Writ jurisdiction under Art. 226 (broader than Art. 32)", "Superintendence over all subordinate courts (Art. 227)", "Appellate jurisdiction over subordinate courts", "Court of Record (Art. 215)", "Transfer of cases to itself (Art. 228)"], courtCount: "25", courtChildren: ["district", "sessions"] },
+    { name: "District & Sessions Courts (~672)", type: "district", basis: "Art. 233–237", judges: "District Judge + Additional Judges", jurisdiction: "Original (civil & criminal) — one per district", description: "Principal courts of original jurisdiction at the district level.", powers: ["Original civil jurisdiction in high-value suits", "Sessions Court for IPC offences carrying 7+ years", "Appellate jurisdiction over Magistrate courts", "Execution of High Court decrees"], courtCount: "~672", courtChildren: ["civil_subordinate", "magistrate"] },
+    { name: "Civil & Subordinate Courts", type: "subordinate", basis: "State legislation", judges: "Civil Judges, Munsifs", jurisdiction: "Original (lower-value civil cases)", description: "Civil Judge courts and Small Causes Courts at sub-district level.", powers: ["Civil Judge — suits below District Court pecuniary limits", "Small Causes Courts in metro cities", "Family Courts for matrimonial disputes (Family Courts Act, 1984)"], courtCount: "~5,000+" },
+    { name: "Judicial Magistrate Courts", type: "subordinate", basis: "CrPC / BNSS", judges: "Chief Judicial Magistrate, JMs", jurisdiction: "Original criminal jurisdiction (lesser offences)", description: "Handle the majority of criminal cases in India.", powers: ["Trial of offences with up to 3–7 years imprisonment", "Committal of serious cases to Sessions Court", "Cognizance of police chargesheets"], courtCount: "~15,000+" },
+    { name: "National Green Tribunal (NGT)", type: "tribunal", basis: "NGT Act, 2010", judges: "Chairperson + Expert Members", jurisdiction: "Environmental disputes (all India)", description: "Specialised tribunal for environmental protection, conservation, and forest rights.", powers: ["Adjudication of environmental disputes", "Relief and compensation for environmental damage", "Implementation of environmental laws"], courtCount: "1" },
+    { name: "National Company Law Tribunal (NCLT)", type: "tribunal", basis: "Companies Act, 2013", judges: "President + Judicial & Technical Members", jurisdiction: "Corporate insolvency and company law", description: "Handles insolvency proceedings, mergers, and company law disputes.", powers: ["Insolvency Resolution under IBC, 2016", "Approval of mergers and demergers", "Oppression and mismanagement cases"], courtCount: "16 benches" },
+    { name: "Central Administrative Tribunal (CAT)", type: "tribunal", basis: "Administrative Tribunals Act, 1985", judges: "Chairman + Members", jurisdiction: "Service matters of Central Government employees", description: "Adjudicates service disputes of Central Government employees.", powers: ["Service disputes — promotions, transfers, termination", "Original jurisdiction in matters covered by Art. 323A", "Appeal lies to HC under Art. 226/227"], courtCount: "17 benches" },
+  ];
+  // High Courts with detailed info
+  const highCourtsDetail = [
+    { name: "Allahabad High Court",       city: "Prayagraj",  states: ["Uttar Pradesh"],                                          established: 1866, sanctioned: 160, region: "North",     benches: ["Lucknow"],                      notable: "Largest HC by judge strength" },
+    { name: "Andhra Pradesh High Court",  city: "Amaravati",  states: ["Andhra Pradesh"],                                         established: 2019, sanctioned: 37,  region: "South",     benches: [],                               notable: "Newest HC, successor to undivided Andhra HC" },
+    { name: "Bombay High Court",          city: "Mumbai",     states: ["Maharashtra", "Goa", "Dadra & NH", "Daman & Diu"],        established: 1862, sanctioned: 94,  region: "West",      benches: ["Nagpur", "Aurangabad", "Panaji"],notable: "One of three original Charter HCs (1862)" },
+    { name: "Calcutta High Court",        city: "Kolkata",    states: ["West Bengal", "Andaman & Nicobar"],                       established: 1862, sanctioned: 72,  region: "East",      benches: ["Port Blair"],                   notable: "Oldest High Court in India" },
+    { name: "Chhattisgarh High Court",    city: "Bilaspur",   states: ["Chhattisgarh"],                                           established: 2000, sanctioned: 22,  region: "Central",   benches: [],                               notable: "Formed on Chhattisgarh statehood" },
+    { name: "Delhi High Court",           city: "New Delhi",  states: ["Delhi (NCT)"],                                            established: 1966, sanctioned: 60,  region: "North",     benches: [],                               notable: "Jurisdiction over national capital" },
+    { name: "Gauhati High Court",         city: "Guwahati",   states: ["Assam", "Nagaland", "Mizoram", "Arunachal Pradesh"],      established: 1948, sanctioned: 24,  region: "Northeast", benches: ["Kohima", "Aizawl", "Itanagar"], notable: "Principal HC for the Northeast" },
+    { name: "Gujarat High Court",         city: "Ahmedabad",  states: ["Gujarat"],                                                established: 1960, sanctioned: 52,  region: "West",      benches: [],                               notable: "Formed on Gujarat–Maharashtra bifurcation" },
+    { name: "Himachal Pradesh High Court",city: "Shimla",     states: ["Himachal Pradesh"],                                       established: 1971, sanctioned: 13,  region: "North",     benches: [],                               notable: "Situated at 7,000 ft altitude" },
+    { name: "J&K & Ladakh High Court",    city: "Srinagar",   states: ["Jammu & Kashmir", "Ladakh"],                              established: 1928, sanctioned: 17,  region: "North",     benches: ["Jammu"],                        notable: "Serves two UTs post Art. 370 abrogation" },
+    { name: "Jharkhand High Court",       city: "Ranchi",     states: ["Jharkhand"],                                              established: 2000, sanctioned: 25,  region: "East",      benches: [],                               notable: "Formed on Jharkhand statehood" },
+    { name: "Karnataka High Court",       city: "Bengaluru",  states: ["Karnataka"],                                              established: 1884, sanctioned: 62,  region: "South",     benches: ["Dharwad", "Kalaburagi"],        notable: "Third busiest HC" },
+    { name: "Kerala High Court",          city: "Ernakulam",  states: ["Kerala", "Lakshadweep"],                                  established: 1958, sanctioned: 47,  region: "South",     benches: [],                               notable: "Known for high case disposal rate" },
+    { name: "Madras High Court",          city: "Chennai",    states: ["Tamil Nadu", "Puducherry"],                               established: 1862, sanctioned: 75,  region: "South",     benches: ["Madurai"],                      notable: "One of three original Charter HCs" },
+    { name: "Manipur High Court",         city: "Imphal",     states: ["Manipur"],                                                established: 2013, sanctioned: 5,   region: "Northeast", benches: [],                               notable: "One of smallest HCs" },
+    { name: "Meghalaya High Court",       city: "Shillong",   states: ["Meghalaya"],                                              established: 2013, sanctioned: 4,   region: "Northeast", benches: [],                               notable: "One of newest HCs" },
+    { name: "Madhya Pradesh High Court",  city: "Jabalpur",   states: ["Madhya Pradesh"],                                         established: 1956, sanctioned: 53,  region: "Central",   benches: ["Gwalior", "Indore"],            notable: "Former Nagpur HC jurisdiction absorbed" },
+    { name: "Orissa High Court",          city: "Cuttack",    states: ["Odisha"],                                                 established: 1948, sanctioned: 33,  region: "East",      benches: [],                               notable: "City still called Cuttack, not Bhubaneswar" },
+    { name: "Patna High Court",           city: "Patna",      states: ["Bihar"],                                                  established: 1916, sanctioned: 53,  region: "East",      benches: [],                               notable: "Serves Bihar after Jharkhand separation" },
+    { name: "Punjab & Haryana High Court",city: "Chandigarh", states: ["Punjab", "Haryana", "Chandigarh (UT)"],                   established: 1947, sanctioned: 85,  region: "North",     benches: [],                               notable: "Serves two states + 1 UT from shared capital" },
+    { name: "Rajasthan High Court",       city: "Jodhpur",    states: ["Rajasthan"],                                              established: 1949, sanctioned: 40,  region: "North",     benches: ["Jaipur"],                       notable: "Principal seat in Jodhpur, not capital Jaipur" },
+    { name: "Sikkim High Court",          city: "Gangtok",    states: ["Sikkim"],                                                 established: 1975, sanctioned: 3,   region: "Northeast", benches: [],                               notable: "Smallest HC in India" },
+    { name: "Telangana High Court",       city: "Hyderabad",  states: ["Telangana"],                                              established: 2019, sanctioned: 46,  region: "South",     benches: [],                               notable: "Shares premises with AP HC temporarily" },
+    { name: "Tripura High Court",         city: "Agartala",   states: ["Tripura"],                                                established: 2013, sanctioned: 4,   region: "Northeast", benches: [],                               notable: "One of four new Northeast HCs (2013)" },
+    { name: "Uttarakhand High Court",     city: "Nainital",   states: ["Uttarakhand"],                                            established: 2000, sanctioned: 11,  region: "North",     benches: [],                               notable: "Seated at a hill station" },
   ];
   const courtMap: Record<string, string> = {};
   for (const c of courtsData) {
@@ -218,6 +251,13 @@ async function main() {
       create: c,
     });
     courtMap[c.name] = court.id;
+  }
+  for (const hc of highCourtsDetail) {
+    await prisma.court.upsert({
+      where: { name: hc.name },
+      update: { ...hc, type: "high" },
+      create: { ...hc, type: "high", powers: [] },
+    });
   }
 
   const casesData = [
@@ -229,6 +269,8 @@ async function main() {
     { name: "I.C. Golaknath v. State of Punjab", citation: "AIR 1967 SC 1643", year: 1967, courtName: "Supreme Court of India", summary: "Held Parliament cannot amend Fundamental Rights — later partially overruled by Kesavananda.", significance: "11-judge bench (6-5) held fundamental rights cannot be abridged. Led to 24th and 25th Amendments and ultimately Kesavananda.", impact: "Set the stage for the basic structure doctrine debate", articleNums: ["368"] },
   ];
   for (const c of casesData) {
+    const existingCase = await prisma.landmarkCase.findFirst({ where: { citation: c.citation } });
+    if (existingCase) continue;
     await prisma.landmarkCase.create({
       data: {
         name: c.name,
@@ -360,6 +402,120 @@ async function main() {
     });
   }
 
+  // Historical party results — 18 LS elections, INC / BJP / Left / SP
+  const historicalPartyResults = [
+    { year: 1952, INC: 364, BJP: 3,   Left: 28, SP: 0,  incShare: 45.0, bjpShare: 3.1,  leftShare: 8.0  },
+    { year: 1957, INC: 371, BJP: 4,   Left: 34, SP: 0,  incShare: 47.8, bjpShare: 5.9,  leftShare: 9.0  },
+    { year: 1962, INC: 361, BJP: 14,  Left: 52, SP: 0,  incShare: 44.7, bjpShare: 6.4,  leftShare: 10.2 },
+    { year: 1967, INC: 283, BJP: 35,  Left: 42, SP: 0,  incShare: 40.8, bjpShare: 9.4,  leftShare: 8.5  },
+    { year: 1971, INC: 352, BJP: 22,  Left: 48, SP: 0,  incShare: 43.7, bjpShare: 7.4,  leftShare: 10.2 },
+    { year: 1977, INC: 154, BJP: 295, Left: 29, SP: 0,  incShare: 34.5, bjpShare: 41.3, leftShare: 8.8  },
+    { year: 1980, INC: 353, BJP: 31,  Left: 41, SP: 0,  incShare: 42.7, bjpShare: 19.0, leftShare: 10.2 },
+    { year: 1984, INC: 414, BJP: 2,   Left: 29, SP: 0,  incShare: 49.0, bjpShare: 7.4,  leftShare: 8.2  },
+    { year: 1989, INC: 197, BJP: 85,  Left: 56, SP: 0,  incShare: 39.5, bjpShare: 11.5, leftShare: 10.5 },
+    { year: 1991, INC: 244, BJP: 120, Left: 58, SP: 5,  incShare: 36.5, bjpShare: 20.1, leftShare: 11.0 },
+    { year: 1996, INC: 140, BJP: 161, Left: 67, SP: 17, incShare: 28.8, bjpShare: 20.3, leftShare: 12.0 },
+    { year: 1998, INC: 141, BJP: 182, Left: 57, SP: 20, incShare: 25.8, bjpShare: 25.6, leftShare: 11.2 },
+    { year: 1999, INC: 114, BJP: 182, Left: 64, SP: 26, incShare: 28.3, bjpShare: 23.8, leftShare: 12.5 },
+    { year: 2004, INC: 145, BJP: 138, Left: 61, SP: 36, incShare: 26.5, bjpShare: 22.2, leftShare: 11.5 },
+    { year: 2009, INC: 206, BJP: 116, Left: 24, SP: 23, incShare: 28.5, bjpShare: 18.8, leftShare: 7.5  },
+    { year: 2014, INC: 44,  BJP: 282, Left: 11, SP: 5,  incShare: 19.5, bjpShare: 31.0, leftShare: 4.1  },
+    { year: 2019, INC: 52,  BJP: 303, Left: 6,  SP: 5,  incShare: 19.5, bjpShare: 37.4, leftShare: 2.7  },
+    { year: 2024, INC: 99,  BJP: 240, Left: 5,  SP: 37, incShare: 21.2, bjpShare: 36.6, leftShare: 2.1  },
+  ];
+  const historicalRows = historicalPartyResults.flatMap((r) => [
+    { year: r.year, type: "lok_sabha", party: "INC",  color: "#1565C0", seats: r.INC,  voteShare: r.incShare  },
+    { year: r.year, type: "lok_sabha", party: "BJP",  color: "#FF9933", seats: r.BJP,  voteShare: r.bjpShare  },
+    { year: r.year, type: "lok_sabha", party: "Left", color: "#B91C1C", seats: r.Left, voteShare: r.leftShare },
+    { year: r.year, type: "lok_sabha", party: "SP",   color: "#EF4444", seats: r.SP,   voteShare: null        },
+  ]);
+  for (const r of historicalRows) {
+    await prisma.partyElectionResult.upsert({
+      where: { year_type_party: { year: r.year, type: r.type, party: r.party } },
+      update: r,
+      create: r,
+    });
+  }
+
+  // State-wise 2024 Lok Sabha results
+  console.log("  Seeding state election results...");
+  const stateResults2024 = [
+    { year: 2024, type: "lok_sabha", state: "Uttar Pradesh",     code: "UP", seats: 80, dominant: "SP",      dominantColor: "#EF4444", dominantSeats: 37, alliance: "INDIA", turnout: 57.4, ndaSeats: 36, indiaSeats: 43, otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Maharashtra",       code: "MH", seats: 48, dominant: "INC",     dominantColor: "#1565C0", dominantSeats: 13, alliance: "INDIA", turnout: 61.0, ndaSeats: 17, indiaSeats: 30, otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "West Bengal",       code: "WB", seats: 42, dominant: "TMC",     dominantColor: "#059669", dominantSeats: 29, alliance: "INDIA", turnout: 73.0, ndaSeats: 12, indiaSeats: 30, otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Tamil Nadu",        code: "TN", seats: 39, dominant: "DMK",     dominantColor: "#DC143C", dominantSeats: 22, alliance: "INDIA", turnout: 69.1, ndaSeats: 1,  indiaSeats: 38, otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Bihar",             code: "BR", seats: 40, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 12, alliance: "NDA",   turnout: 56.2, ndaSeats: 30, indiaSeats: 10, otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Karnataka",         code: "KA", seats: 28, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 17, alliance: "NDA",   turnout: 69.5, ndaSeats: 19, indiaSeats: 9,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Andhra Pradesh",    code: "AP", seats: 25, dominant: "TDP",     dominantColor: "#D97706", dominantSeats: 16, alliance: "NDA",   turnout: 79.4, ndaSeats: 21, indiaSeats: 4,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Rajasthan",         code: "RJ", seats: 25, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 14, alliance: "NDA",   turnout: 58.2, ndaSeats: 14, indiaSeats: 8,  otherSeats: 3  },
+    { year: 2024, type: "lok_sabha", state: "Madhya Pradesh",    code: "MP", seats: 29, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 29, alliance: "NDA",   turnout: 58.1, ndaSeats: 29, indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Gujarat",           code: "GJ", seats: 26, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 25, alliance: "NDA",   turnout: 60.3, ndaSeats: 25, indiaSeats: 0,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Odisha",            code: "OD", seats: 21, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 20, alliance: "NDA",   turnout: 74.2, ndaSeats: 20, indiaSeats: 1,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Kerala",            code: "KL", seats: 20, dominant: "INC",     dominantColor: "#1565C0", dominantSeats: 18, alliance: "INDIA", turnout: 70.9, ndaSeats: 1,  indiaSeats: 19, otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Telangana",         code: "TS", seats: 17, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 8,  alliance: "NDA",   turnout: 63.2, ndaSeats: 8,  indiaSeats: 8,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Assam",             code: "AS", seats: 14, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 9,  alliance: "NDA",   turnout: 74.0, ndaSeats: 11, indiaSeats: 3,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Jharkhand",         code: "JH", seats: 14, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 8,  alliance: "NDA",   turnout: 65.6, ndaSeats: 9,  indiaSeats: 5,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Punjab",            code: "PB", seats: 13, dominant: "INC",     dominantColor: "#1565C0", dominantSeats: 7,  alliance: "INDIA", turnout: 60.8, ndaSeats: 2,  indiaSeats: 10, otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Chhattisgarh",      code: "CG", seats: 11, dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 10, alliance: "NDA",   turnout: 72.1, ndaSeats: 10, indiaSeats: 1,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Haryana",           code: "HR", seats: 10, dominant: "INC",     dominantColor: "#1565C0", dominantSeats: 5,  alliance: "INDIA", turnout: 63.2, ndaSeats: 5,  indiaSeats: 5,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Delhi",             code: "DL", seats: 7,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 7,  alliance: "NDA",   turnout: 58.7, ndaSeats: 7,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Jammu & Kashmir",   code: "JK", seats: 5,  dominant: "NC",      dominantColor: "#1A237E", dominantSeats: 2,  alliance: "INDIA", turnout: 57.8, ndaSeats: 2,  indiaSeats: 3,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Uttarakhand",       code: "UK", seats: 5,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 5,  alliance: "NDA",   turnout: 60.1, ndaSeats: 5,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Himachal Pradesh",  code: "HP", seats: 4,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 4,  alliance: "NDA",   turnout: 72.3, ndaSeats: 4,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Tripura",           code: "TR", seats: 2,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 2,  alliance: "NDA",   turnout: 80.4, ndaSeats: 2,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Meghalaya",         code: "ML", seats: 2,  dominant: "VPP",     dominantColor: "#64748B", dominantSeats: 1,  alliance: "Other", turnout: 70.1, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Manipur",           code: "MN", seats: 2,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 1,  alliance: "NDA",   turnout: 70.2, ndaSeats: 1,  indiaSeats: 0,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Arunachal Pradesh", code: "AR", seats: 2,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 2,  alliance: "NDA",   turnout: 80.3, ndaSeats: 2,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Goa",               code: "GA", seats: 2,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 1,  alliance: "NDA",   turnout: 76.5, ndaSeats: 1,  indiaSeats: 1,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Nagaland",          code: "NL", seats: 1,  dominant: "NDPP",    dominantColor: "#64748B", dominantSeats: 1,  alliance: "NDA",   turnout: 62.1, ndaSeats: 1,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Mizoram",           code: "MZ", seats: 1,  dominant: "ZPM",     dominantColor: "#6D28D9", dominantSeats: 1,  alliance: "Other", turnout: 56.9, ndaSeats: 0,  indiaSeats: 0,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Sikkim",            code: "SK", seats: 1,  dominant: "SKM",     dominantColor: "#059669", dominantSeats: 1,  alliance: "Other", turnout: 80.1, ndaSeats: 0,  indiaSeats: 0,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "Chandigarh",        code: "CH", seats: 1,  dominant: "INC",     dominantColor: "#1565C0", dominantSeats: 1,  alliance: "INDIA", turnout: 68.3, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Puducherry",        code: "PY", seats: 1,  dominant: "INC",     dominantColor: "#1565C0", dominantSeats: 1,  alliance: "INDIA", turnout: 80.5, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "A&N Islands",       code: "AN", seats: 1,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 1,  alliance: "NDA",   turnout: 72.4, ndaSeats: 1,  indiaSeats: 0,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Lakshadweep",       code: "LD", seats: 1,  dominant: "NCP-SP",  dominantColor: "#7C3AED", dominantSeats: 1,  alliance: "INDIA", turnout: 84.1, ndaSeats: 0,  indiaSeats: 1,  otherSeats: 0  },
+    { year: 2024, type: "lok_sabha", state: "Ladakh",            code: "LA", seats: 1,  dominant: "Ind.",    dominantColor: "#64748B", dominantSeats: 1,  alliance: "Other", turnout: 72.0, ndaSeats: 0,  indiaSeats: 0,  otherSeats: 1  },
+    { year: 2024, type: "lok_sabha", state: "DNH & DD",          code: "DD", seats: 2,  dominant: "BJP",     dominantColor: "#FF9933", dominantSeats: 2,  alliance: "NDA",   turnout: 71.2, ndaSeats: 2,  indiaSeats: 0,  otherSeats: 0  },
+  ];
+  for (const r of stateResults2024) {
+    await prisma.stateElectionResult.upsert({
+      where: { year_type_state: { year: r.year, type: r.type, state: r.state } },
+      update: r,
+      create: r,
+    });
+  }
+
+  // State assembly election results (2022-2024)
+  console.log("  Seeding state assembly elections...");
+  const assemblyElections = [
+    { state: "Jharkhand",        year: 2024, totalSeats: 81,  winner: "JMM",  winnerColor: "#2E7D32", winnerSeats: 34,  runnerUp: "BJP",   runnerUpSeats: 21, turnout: 68.5 },
+    { state: "Maharashtra",      year: 2024, totalSeats: 288, winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 132, runnerUp: "INC",   runnerUpSeats: 50, turnout: 65.0 },
+    { state: "Haryana",          year: 2024, totalSeats: 90,  winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 48,  runnerUp: "INC",   runnerUpSeats: 37, turnout: 67.9 },
+    { state: "Jammu & Kashmir",  year: 2024, totalSeats: 90,  winner: "NC",   winnerColor: "#1A237E", winnerSeats: 42,  runnerUp: "BJP",   runnerUpSeats: 29, turnout: 63.6 },
+    { state: "Andhra Pradesh",   year: 2024, totalSeats: 175, winner: "TDP",  winnerColor: "#D97706", winnerSeats: 135, runnerUp: "YSRCP", runnerUpSeats: 11, turnout: 81.1 },
+    { state: "Odisha",           year: 2024, totalSeats: 147, winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 78,  runnerUp: "BJD",   runnerUpSeats: 51, turnout: 74.1 },
+    { state: "Rajasthan",        year: 2023, totalSeats: 200, winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 115, runnerUp: "INC",   runnerUpSeats: 69, turnout: 75.1 },
+    { state: "Madhya Pradesh",   year: 2023, totalSeats: 230, winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 163, runnerUp: "INC",   runnerUpSeats: 66, turnout: 77.1 },
+    { state: "Chhattisgarh",     year: 2023, totalSeats: 90,  winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 54,  runnerUp: "INC",   runnerUpSeats: 35, turnout: 76.4 },
+    { state: "Telangana",        year: 2023, totalSeats: 119, winner: "INC",  winnerColor: "#1565C0", winnerSeats: 64,  runnerUp: "BRS",   runnerUpSeats: 39, turnout: 73.1 },
+    { state: "Mizoram",          year: 2023, totalSeats: 40,  winner: "ZPM",  winnerColor: "#6D28D9", winnerSeats: 27,  runnerUp: "MNF",   runnerUpSeats: 10, turnout: 80.9 },
+    { state: "Karnataka",        year: 2023, totalSeats: 224, winner: "INC",  winnerColor: "#1565C0", winnerSeats: 135, runnerUp: "BJP",   runnerUpSeats: 66, turnout: 72.7 },
+    { state: "Gujarat",          year: 2022, totalSeats: 182, winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 156, runnerUp: "INC",   runnerUpSeats: 17, turnout: 63.3 },
+    { state: "Himachal Pradesh", year: 2022, totalSeats: 68,  winner: "INC",  winnerColor: "#1565C0", winnerSeats: 40,  runnerUp: "BJP",   runnerUpSeats: 25, turnout: 75.6 },
+    { state: "Uttar Pradesh",    year: 2022, totalSeats: 403, winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 255, runnerUp: "SP",    runnerUpSeats: 111, turnout: 60.5 },
+    { state: "Punjab",           year: 2022, totalSeats: 117, winner: "AAP",  winnerColor: "#06B6D4", winnerSeats: 92,  runnerUp: "INC",   runnerUpSeats: 18, turnout: 71.9 },
+    { state: "Uttarakhand",      year: 2022, totalSeats: 70,  winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 47,  runnerUp: "INC",   runnerUpSeats: 19, turnout: 65.5 },
+    { state: "Goa",              year: 2022, totalSeats: 40,  winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 20,  runnerUp: "INC",   runnerUpSeats: 11, turnout: 79.6 },
+    { state: "Manipur",          year: 2022, totalSeats: 60,  winner: "BJP",  winnerColor: "#FF9933", winnerSeats: 32,  runnerUp: "NPP",   runnerUpSeats: 7,  turnout: 88.1 },
+  ];
+  for (const r of assemblyElections) {
+    await prisma.stateAssemblyElection.upsert({
+      where: { state_year: { state: r.state, year: r.year } },
+      update: r,
+      create: r,
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // MINISTRIES
   // ═══════════════════════════════════════════════════════════════
@@ -468,78 +624,63 @@ async function main() {
     { date: new Date("2023-09-28"), displayDate: "2023", title: "Women's Reservation", description: "106th Amendment reserves one-third seats for women in Lok Sabha and State Assemblies.", category: "constitutional", significance: "landmark" },
   ];
   for (const t of timelineData) {
-    await prisma.timelineEvent.create({ data: t });
+    const existing = await prisma.timelineEvent.findFirst({ where: { title: t.title } });
+    if (!existing) await prisma.timelineEvent.create({ data: t });
   }
 
   // ═══════════════════════════════════════════════════════════════
   // GOVERNANCE PROCESSES (SIMULATIONS)
   // ═══════════════════════════════════════════════════════════════
   console.log("  Seeding governance processes...");
-  const billProcess = await prisma.governanceProcess.create({
-    data: {
-      slug: "bill-passing",
-      name: "How a Bill Becomes Law",
+  const governanceProcesses = [
+    {
+      slug: "bill-passing", name: "How a Bill Becomes Law",
       description: "Walk through the complete legislative process — from introduction to Presidential assent",
-      category: "legislative",
-      difficulty: "beginner",
-      estimatedTime: "10 min",
-      constitutionalBasis: "Art. 107-111",
-      steps: {
-        create: [
-          { order: 1, title: "Bill Introduction", actor: "Member of Parliament / Minister", description: "A bill is introduced in either House of Parliament. Government bills are introduced by ministers.", institution: "Parliament", constitutionalArticle: "Art. 107-108", fact: "A Money Bill can only be introduced in the Lok Sabha (Art. 109)." },
-          { order: 2, title: "First Reading", actor: "House in which bill is introduced", description: "The bill is introduced and its title and purpose are read out. No debate at this stage.", institution: "Parliament", constitutionalArticle: "Art. 107" },
-          { order: 3, title: "Committee Stage", actor: "Standing/Select/Joint Committee", description: "The bill is referred to a parliamentary committee for detailed examination.", institution: "Parliamentary Committee", fact: "Committee stages are not mandatory but considered best practice.", options: [{ label: "Refer to Standing Committee", outcome: "Committee takes 3-6 months to examine.", correct: true }, { label: "Skip committee stage", outcome: "Bill proceeds directly to debate." }, { label: "Refer to Joint Committee", outcome: "Both houses form a joint committee." }] },
-          { order: 4, title: "Second Reading — General Discussion", actor: "Full House", description: "The bill is discussed in general terms. Members debate principles and provisions.", institution: "Parliament" },
-          { order: 5, title: "Second Reading — Clause-by-Clause", actor: "Full House", description: "Each clause is discussed individually and voted upon. Amendments can be proposed.", institution: "Parliament" },
-          { order: 6, title: "Third Reading", actor: "Full House", description: "The bill is put to a final vote. Only verbal amendments allowed.", institution: "Parliament", options: [{ label: "Simple Majority", outcome: "Most bills require a simple majority.", correct: true }, { label: "Special Majority", outcome: "Constitutional amendments need 2/3 majority." }] },
-          { order: 7, title: "Transmission to Other House", actor: "Other House of Parliament", description: "Bill sent to other House which can pass, reject, amend, or delay it.", institution: "Parliament", constitutionalArticle: "Art. 107-108", fact: "Joint Sitting (Art. 108) has happened only 3 times in history." },
-          { order: 8, title: "Presidential Assent", actor: "President of India", description: "President may: give assent, withhold assent, or return for reconsideration.", institution: "Rashtrapati Bhavan", constitutionalArticle: "Art. 111", fact: "The President has never withheld assent outright." },
-          { order: 9, title: "Law Enacted", actor: "Government of India", description: "Bill becomes an Act, published in Official Gazette.", institution: "Government", fact: "India has approximately 1,300 central laws currently in force." },
-        ],
-      },
+      category: "legislative", difficulty: "beginner", estimatedTime: "10 min", constitutionalBasis: "Art. 107-111",
+      steps: [
+        { order: 1, title: "Bill Introduction", actor: "Member of Parliament / Minister", description: "A bill is introduced in either House of Parliament. Government bills are introduced by ministers.", institution: "Parliament", constitutionalArticle: "Art. 107-108", fact: "A Money Bill can only be introduced in the Lok Sabha (Art. 109)." },
+        { order: 2, title: "First Reading", actor: "House in which bill is introduced", description: "The bill is introduced and its title and purpose are read out. No debate at this stage.", institution: "Parliament", constitutionalArticle: "Art. 107" },
+        { order: 3, title: "Committee Stage", actor: "Standing/Select/Joint Committee", description: "The bill is referred to a parliamentary committee for detailed examination.", institution: "Parliamentary Committee", fact: "Committee stages are not mandatory but considered best practice.", options: [{ label: "Refer to Standing Committee", outcome: "Committee takes 3-6 months to examine.", correct: true }, { label: "Skip committee stage", outcome: "Bill proceeds directly to debate." }, { label: "Refer to Joint Committee", outcome: "Both houses form a joint committee." }] },
+        { order: 4, title: "Second Reading — General Discussion", actor: "Full House", description: "The bill is discussed in general terms. Members debate principles and provisions.", institution: "Parliament" },
+        { order: 5, title: "Second Reading — Clause-by-Clause", actor: "Full House", description: "Each clause is discussed individually and voted upon. Amendments can be proposed.", institution: "Parliament" },
+        { order: 6, title: "Third Reading", actor: "Full House", description: "The bill is put to a final vote. Only verbal amendments allowed.", institution: "Parliament", options: [{ label: "Simple Majority", outcome: "Most bills require a simple majority.", correct: true }, { label: "Special Majority", outcome: "Constitutional amendments need 2/3 majority." }] },
+        { order: 7, title: "Transmission to Other House", actor: "Other House of Parliament", description: "Bill sent to other House which can pass, reject, amend, or delay it.", institution: "Parliament", constitutionalArticle: "Art. 107-108", fact: "Joint Sitting (Art. 108) has happened only 3 times in history." },
+        { order: 8, title: "Presidential Assent", actor: "President of India", description: "President may: give assent, withhold assent, or return for reconsideration.", institution: "Rashtrapati Bhavan", constitutionalArticle: "Art. 111", fact: "The President has never withheld assent outright." },
+        { order: 9, title: "Law Enacted", actor: "Government of India", description: "Bill becomes an Act, published in Official Gazette.", institution: "Government", fact: "India has approximately 1,300 central laws currently in force." },
+      ],
     },
-  });
-
-  await prisma.governanceProcess.create({
-    data: {
-      slug: "no-confidence",
-      name: "No-Confidence Motion",
+    {
+      slug: "no-confidence", name: "No-Confidence Motion",
       description: "How a government can be brought down through a vote of no-confidence",
-      category: "executive",
-      difficulty: "intermediate",
-      estimatedTime: "8 min",
-      constitutionalBasis: "Art. 75(3)",
-      steps: {
-        create: [
-          { order: 1, title: "Motion Submitted", actor: "Opposition MP", description: "Any Lok Sabha member can introduce a no-confidence motion. Requires at least 50 members' support.", institution: "Lok Sabha", constitutionalArticle: "Art. 75(3), Rule 198" },
-          { order: 2, title: "Speaker's Decision", actor: "Speaker of Lok Sabha", description: "Speaker examines if motion has 50+ members' support by members rising in seats.", institution: "Lok Sabha", fact: "No-confidence motions can only be moved in Lok Sabha, not Rajya Sabha." },
-          { order: 3, title: "Debate", actor: "Members of Lok Sabha", description: "Full debate where opposition highlights reasons; ruling party defends record. PM responds at end.", institution: "Lok Sabha" },
-          { order: 4, title: "Vote", actor: "All Members of Lok Sabha", description: "Motion put to vote. If passed by simple majority, government must resign.", institution: "Lok Sabha", options: [{ label: "Motion Passes", outcome: "Council of Ministers must resign. President invites opposition or calls elections." }, { label: "Motion Fails", outcome: "Government survives. Another motion cannot be moved for 6 months.", correct: true }], fact: "27 no-confidence motions moved. Only one succeeded — against V.P. Singh (1990)." },
-        ],
-      },
+      category: "executive", difficulty: "intermediate", estimatedTime: "8 min", constitutionalBasis: "Art. 75(3)",
+      steps: [
+        { order: 1, title: "Motion Submitted", actor: "Opposition MP", description: "Any Lok Sabha member can introduce a no-confidence motion. Requires at least 50 members' support.", institution: "Lok Sabha", constitutionalArticle: "Art. 75(3), Rule 198" },
+        { order: 2, title: "Speaker's Decision", actor: "Speaker of Lok Sabha", description: "Speaker examines if motion has 50+ members' support by members rising in seats.", institution: "Lok Sabha", fact: "No-confidence motions can only be moved in Lok Sabha, not Rajya Sabha." },
+        { order: 3, title: "Debate", actor: "Members of Lok Sabha", description: "Full debate where opposition highlights reasons; ruling party defends record. PM responds at end.", institution: "Lok Sabha" },
+        { order: 4, title: "Vote", actor: "All Members of Lok Sabha", description: "Motion put to vote. If passed by simple majority, government must resign.", institution: "Lok Sabha", options: [{ label: "Motion Passes", outcome: "Council of Ministers must resign. President invites opposition or calls elections." }, { label: "Motion Fails", outcome: "Government survives. Another motion cannot be moved for 6 months.", correct: true }], fact: "27 no-confidence motions moved. Only one succeeded — against V.P. Singh (1990)." },
+      ],
     },
-  });
-
-  await prisma.governanceProcess.create({
-    data: {
-      slug: "constitutional-amendment",
-      name: "Constitutional Amendment",
+    {
+      slug: "constitutional-amendment", name: "Constitutional Amendment",
       description: "How the Constitution can be amended under Article 368",
-      category: "constitutional",
-      difficulty: "advanced",
-      estimatedTime: "12 min",
-      constitutionalBasis: "Art. 368",
-      steps: {
-        create: [
-          { order: 1, title: "Amendment Bill Introduced", actor: "Member of Parliament", description: "A bill to amend can be introduced in either House. No prior President permission needed.", institution: "Parliament", constitutionalArticle: "Art. 368" },
-          { order: 2, title: "Passage in Each House", actor: "Both Houses of Parliament", description: "Must pass by Special Majority — majority of total membership AND 2/3 of members present and voting. No joint sitting possible.", institution: "Parliament", constitutionalArticle: "Art. 368(2)", fact: "If Lok Sabha has 545 members, at least 273 must vote in favor." },
-          { order: 3, title: "State Ratification (If Required)", actor: "State Legislatures", description: "Certain amendments affecting federal provisions must be ratified by at least half the state legislatures.", institution: "State Legislatures", constitutionalArticle: "Art. 368(2) proviso", options: [{ label: "Ratification needed", outcome: "At least 15 of 28 states must ratify by simple majority.", correct: true }, { label: "No ratification needed", outcome: "Bill goes directly to President." }] },
-          { order: 4, title: "Presidential Assent", actor: "President of India", description: "President must give assent — cannot return the bill for reconsideration.", institution: "Rashtrapati Bhavan", constitutionalArticle: "Art. 368(2)", fact: "The Basic Structure Doctrine limits amending power." },
-          { order: 5, title: "Amendment Effective", actor: "Constitution of India", description: "Amendment becomes part of the Constitution from date of assent.", institution: "Government", fact: "India has had 106 amendments. The 42nd (1976) is called the 'Mini Constitution'." },
-        ],
-      },
+      category: "constitutional", difficulty: "advanced", estimatedTime: "12 min", constitutionalBasis: "Art. 368",
+      steps: [
+        { order: 1, title: "Amendment Bill Introduced", actor: "Member of Parliament", description: "A bill to amend can be introduced in either House. No prior President permission needed.", institution: "Parliament", constitutionalArticle: "Art. 368" },
+        { order: 2, title: "Passage in Each House", actor: "Both Houses of Parliament", description: "Must pass by Special Majority — majority of total membership AND 2/3 of members present and voting. No joint sitting possible.", institution: "Parliament", constitutionalArticle: "Art. 368(2)", fact: "If Lok Sabha has 545 members, at least 273 must vote in favor." },
+        { order: 3, title: "State Ratification (If Required)", actor: "State Legislatures", description: "Certain amendments affecting federal provisions must be ratified by at least half the state legislatures.", institution: "State Legislatures", constitutionalArticle: "Art. 368(2) proviso", options: [{ label: "Ratification needed", outcome: "At least 15 of 28 states must ratify by simple majority.", correct: true }, { label: "No ratification needed", outcome: "Bill goes directly to President." }] },
+        { order: 4, title: "Presidential Assent", actor: "President of India", description: "President must give assent — cannot return the bill for reconsideration.", institution: "Rashtrapati Bhavan", constitutionalArticle: "Art. 368(2)", fact: "The Basic Structure Doctrine limits amending power." },
+        { order: 5, title: "Amendment Effective", actor: "Constitution of India", description: "Amendment becomes part of the Constitution from date of assent.", institution: "Government", fact: "India has had 106 amendments. The 42nd (1976) is called the 'Mini Constitution'." },
+      ],
     },
-  });
+  ];
+  for (const gp of governanceProcesses) {
+    const exists = await prisma.governanceProcess.findFirst({ where: { slug: gp.slug } });
+    if (!exists) {
+      await prisma.governanceProcess.create({
+        data: { ...gp, steps: { create: gp.steps } },
+      });
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // CITIZEN ACTIONS
@@ -569,23 +710,26 @@ async function main() {
     { slug: "research", title: "Political Science Research", level: "research", description: "For researchers, journalists, policy experts — comparative politics and governance theory.", estimatedHours: 60, color: "slate", prerequisites: [] as string[], modules: ["Comparative Constitutional Design", "Indian Federalism — Scholarly Perspectives", "Electoral Systems & Reform", "Political Party Systems Theory", "Judicial Independence", "Decentralization & Local Governance", "Political Economy of Reform", "Media, Democracy & Public Opinion", "Gender & Representation", "Digital Governance"] },
   ];
   for (const lp of learningPathsData) {
-    await prisma.learningPath.create({
-      data: {
-        slug: lp.slug,
-        title: lp.title,
-        level: lp.level,
-        description: lp.description,
-        estimatedHours: lp.estimatedHours,
-        color: lp.color,
-        prerequisites: lp.prerequisites,
-        modules: {
-          create: lp.modules.map((m, i) => ({
-            title: m,
-            order: i + 1,
-          })),
+    const exists = await prisma.learningPath.findFirst({ where: { slug: lp.slug } });
+    if (!exists) {
+      await prisma.learningPath.create({
+        data: {
+          slug: lp.slug,
+          title: lp.title,
+          level: lp.level,
+          description: lp.description,
+          estimatedHours: lp.estimatedHours,
+          color: lp.color,
+          prerequisites: lp.prerequisites,
+          modules: {
+            create: lp.modules.map((m, i) => ({
+              title: m,
+              order: i + 1,
+            })),
+          },
         },
-      },
-    });
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

@@ -236,7 +236,7 @@ export default function ObservabilityDashboard() {
 
           {/* Scrapers */}
           {tab === "scrapers" && (
-            <ScraperHealthGrid health={data?.scraperHealth ?? []} />
+            <ScraperHealthGrid health={data?.scraperHealth ?? []} onRefresh={fetchData} />
           )}
 
           {/* Alerts */}

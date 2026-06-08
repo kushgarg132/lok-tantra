@@ -9,7 +9,16 @@ import { ingestEntityMedia, refreshStaleAssets } from "../lib/media/ingestion";
 import type { IngestJobData } from "../lib/media/types";
 import { createLogger } from "../lib/observability/logger";
 import { withJobInstrumentation } from "../lib/observability/instrumentation";
+import type { ScraperSource } from "../lib/observability/scraper-run";
 import { prisma } from "../lib/db";
+
+const SOURCE_PROBE_URLS: Partial<Record<ScraperSource, string>> = {
+  ADR_MYNETA:    "https://myneta.info",
+  ECI_PORTAL:    "https://results.eci.gov.in",
+  PRS_INDIA:     "https://prsindia.org",
+  SUPREME_COURT: "https://sci.gov.in",
+  INDIA_CODE_API:"https://api.indiacode.nic.in",
+};
 
 // Dead-letter queue for jobs that have exhausted all retries
 const dlqQueue = new Queue("dlq", { connection: redisConnection as any });
@@ -40,6 +49,24 @@ const apiFetchWorker = new Worker(
           return { success: true };
         },
         { source: "INDIA_CODE_API", jobId: job.id },
+      );
+    }
+
+    if (job.name === "manual-sync") {
+      const source = job.data.source as ScraperSource;
+      return withJobInstrumentation(
+        async () => {
+          const url = SOURCE_PROBE_URLS[source];
+          if (url) {
+            const res = await fetch(url, {
+              method: "HEAD",
+              signal: AbortSignal.timeout(10_000),
+            });
+            if (!res.ok) throw new Error(`Source returned HTTP ${res.status}`);
+          }
+          return { success: true };
+        },
+        { source, jobId: job.id },
       );
     }
 

@@ -1,7 +1,58 @@
 "use client";
 
 import { useState } from "react";
-import { COALITIONS_2024 } from "@/data/elections/intelligence";
+interface CoalitionParty { name: string; abbr: string; color: string; seats: number }
+interface Coalition { name: string; shortName: string; color: string; bgColor: string; totalSeats: number; parties: CoalitionParty[] }
+
+const COALITIONS_2024: Coalition[] = [
+  {
+    name: "National Democratic Alliance",
+    shortName: "NDA",
+    color: "#FF9933",
+    bgColor: "#FFF7ED",
+    totalSeats: 293,
+    parties: [
+      { name: "BJP",         abbr: "BJP", color: "#FF9933", seats: 240 },
+      { name: "TDP",         abbr: "TDP", color: "#D97706", seats: 16  },
+      { name: "JDU",         abbr: "JDU", color: "#0891B2", seats: 12  },
+      { name: "SS (Shinde)", abbr: "SS",  color: "#EA580C", seats: 7   },
+      { name: "LJP-RV",      abbr: "LJP", color: "#FBBF24", seats: 5   },
+      { name: "RLD",         abbr: "RLD", color: "#34D399", seats: 2   },
+      { name: "Others",      abbr: "Oth", color: "#94A3B8", seats: 11  },
+    ],
+  },
+  {
+    name: "INDIA Alliance",
+    shortName: "INDIA",
+    color: "#1565C0",
+    bgColor: "#EFF6FF",
+    totalSeats: 234,
+    parties: [
+      { name: "Congress",    abbr: "INC",    color: "#1565C0", seats: 99 },
+      { name: "SP",          abbr: "SP",     color: "#EF4444", seats: 37 },
+      { name: "TMC",         abbr: "TMC",    color: "#059669", seats: 29 },
+      { name: "DMK",         abbr: "DMK",    color: "#DC143C", seats: 22 },
+      { name: "SS (UBT)",    abbr: "SS-UBT", color: "#F97316", seats: 9  },
+      { name: "NCP (SP)",    abbr: "NCP-SP", color: "#7C3AED", seats: 8  },
+      { name: "RJD",         abbr: "RJD",    color: "#7F1D1D", seats: 4  },
+      { name: "JMM",         abbr: "JMM",    color: "#2E7D32", seats: 3  },
+      { name: "AAP",         abbr: "AAP",    color: "#06B6D4", seats: 3  },
+      { name: "Left",        abbr: "Left",   color: "#B91C1C", seats: 5  },
+      { name: "Others",      abbr: "Oth",    color: "#475569", seats: 15 },
+    ],
+  },
+  {
+    name: "Unaffiliated",
+    shortName: "Others",
+    color: "#64748B",
+    bgColor: "#F8FAFC",
+    totalSeats: 16,
+    parties: [
+      { name: "YSRCP",       abbr: "YSRCP", color: "#F59E0B", seats: 4  },
+      { name: "Ind./Others", abbr: "Oth",   color: "#9CA3AF", seats: 12 },
+    ],
+  },
+];
 
 const TOTAL = 543;
 const MAJORITY = 272;

@@ -3,7 +3,34 @@ import { IDX } from "../indices";
 import { embedTexts } from "../embeddings";
 import type { IndexedDocument } from "../types";
 import { INDIA_STATES } from "@/data/atlas/india";
-import { PARLIAMENT_2024, COALITIONS_2024 } from "@/data/elections/intelligence";
+const PARLIAMENT_2024 = [
+  { party: "JMM",        abbr: "JMM",    seats: 3,   alliance: "INDIA" as const },
+  { party: "AAP",        abbr: "AAP",    seats: 3,   alliance: "INDIA" as const },
+  { party: "Left",       abbr: "Left",   seats: 5,   alliance: "INDIA" as const },
+  { party: "RJD",        abbr: "RJD",    seats: 4,   alliance: "INDIA" as const },
+  { party: "NCP (SP)",   abbr: "NCP-SP", seats: 8,   alliance: "INDIA" as const },
+  { party: "SS (UBT)",   abbr: "SS-UBT", seats: 9,   alliance: "INDIA" as const },
+  { party: "TMC",        abbr: "TMC",    seats: 29,  alliance: "INDIA" as const },
+  { party: "DMK",        abbr: "DMK",    seats: 22,  alliance: "INDIA" as const },
+  { party: "SP",         abbr: "SP",     seats: 37,  alliance: "INDIA" as const },
+  { party: "INC",        abbr: "INC",    seats: 99,  alliance: "INDIA" as const },
+  { party: "INDIA Oth.", abbr: "I-Oth",  seats: 15,  alliance: "INDIA" as const },
+  { party: "YSRCP",      abbr: "YSRCP",  seats: 4,   alliance: "Other" as const },
+  { party: "Ind./Oth.",  abbr: "Oth",    seats: 12,  alliance: "Other" as const },
+  { party: "NDA Oth.",   abbr: "NDA-O",  seats: 11,  alliance: "NDA"   as const },
+  { party: "LJP-RV",     abbr: "LJP",    seats: 5,   alliance: "NDA"   as const },
+  { party: "RLD",        abbr: "RLD",    seats: 2,   alliance: "NDA"   as const },
+  { party: "SS",         abbr: "SS",     seats: 7,   alliance: "NDA"   as const },
+  { party: "JDU",        abbr: "JDU",    seats: 12,  alliance: "NDA"   as const },
+  { party: "TDP",        abbr: "TDP",    seats: 16,  alliance: "NDA"   as const },
+  { party: "BJP",        abbr: "BJP",    seats: 240, alliance: "NDA"   as const },
+];
+
+const COALITIONS_2024 = [
+  { name: "National Democratic Alliance", totalSeats: 293, parties: [{ abbr: "BJP" }, { abbr: "TDP" }, { abbr: "JDU" }, { abbr: "SS" }, { abbr: "LJP" }, { abbr: "RLD" }, { abbr: "Oth" }] },
+  { name: "INDIA Alliance",               totalSeats: 234, parties: [{ abbr: "INC" }, { abbr: "SP" }, { abbr: "TMC" }, { abbr: "DMK" }, { abbr: "SS-UBT" }, { abbr: "NCP-SP" }, { abbr: "RJD" }, { abbr: "JMM" }, { abbr: "AAP" }, { abbr: "Left" }, { abbr: "Oth" }] },
+  { name: "Unaffiliated",                 totalSeats: 16,  parties: [{ abbr: "YSRCP" }, { abbr: "Oth" }] },
+];
 import { prisma } from "@/lib/db";
 
 async function bulkIndex(client: Client, docs: IndexedDocument[], vectors: (number[] | null)[]): Promise<number> {

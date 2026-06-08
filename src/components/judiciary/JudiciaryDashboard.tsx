@@ -10,10 +10,20 @@ import { AppealsFlowPanel } from "./AppealsFlowPanel";
 import { JudgmentGraphPanel } from "./JudgmentGraphPanel";
 import { JudicialReviewPanel } from "./JudicialReviewPanel";
 
-// ─── Types from DB (backward compat) ─────────────────────────────────────────
-interface CourtDB { id: string; name: string; type: string; description?: string | null; basis?: string | null; judges?: string | null; powers: string[] }
-interface CaseDB  { id: string; name: string; year: number; citation?: string | null; summary: string; impact?: string | null; articlesInterpreted: { id: string; number: string }[] }
-interface WritDB  { id: string; name: string; meaning: string; usage: string }
+export interface CourtDB {
+  id: string; name: string; type: string; description?: string | null;
+  basis?: string | null; judges?: string | null; powers: string[];
+  courtCount?: string | null; courtChildren: string[];
+  city?: string | null; states: string[]; region?: string | null;
+  benches: string[]; sanctioned?: number | null; notable?: string | null;
+  jurisdiction?: string | null;
+}
+export interface CaseDB {
+  id: string; name: string; year: number; citation?: string | null;
+  summary: string; significance?: string | null; impact?: string | null;
+  articlesInterpreted: { id: string; number: string }[];
+}
+export interface WritDB { id: string; name: string; meaning: string; usage: string }
 
 interface Props {
   courts: CourtDB[];
@@ -24,29 +34,34 @@ interface Props {
 type TabId = "hierarchy" | "highcourts" | "judgments" | "benches" | "pil" | "appeals" | "graph" | "review";
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: "hierarchy",  label: "Court Hierarchy", icon: "🏛️" },
-  { id: "highcourts", label: "High Courts",      icon: "⚖️" },
-  { id: "judgments",  label: "Landmark Cases",   icon: "📜" },
+  { id: "hierarchy",  label: "Court Hierarchy",     icon: "🏛️" },
+  { id: "highcourts", label: "High Courts",          icon: "⚖️" },
+  { id: "judgments",  label: "Landmark Cases",       icon: "📜" },
   { id: "benches",    label: "Constitution Benches", icon: "👨‍⚖️" },
-  { id: "pil",        label: "PIL Workflow",     icon: "🔍" },
-  { id: "appeals",    label: "Appeals Flow",     icon: "↑" },
-  { id: "graph",      label: "Judgment Graph",   icon: "🕸️" },
-  { id: "review",     label: "Judicial Review",  icon: "🛡️" },
+  { id: "pil",        label: "PIL Workflow",         icon: "🔍" },
+  { id: "appeals",    label: "Appeals Flow",         icon: "↑" },
+  { id: "graph",      label: "Judgment Graph",       icon: "🕸️" },
+  { id: "review",     label: "Judicial Review",      icon: "🛡️" },
 ];
 
 export function JudiciaryDashboard({ courts, cases, writs }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("hierarchy");
 
+  const highCourts = courts.filter((c) => c.type === "high");
+  const hierarchyCourts = courts.filter((c) => c.type !== "high");
+
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-8">
-      {/* Quick stats */}
+      {/* Quick stats from DB */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="card p-5 text-center">
-          <div className="text-3xl font-display font-bold text-amber-600">34</div>
+          <div className="text-3xl font-display font-bold text-amber-600">
+            {courts.find((c) => c.type === "supreme")?.sanctioned ?? 34}
+          </div>
           <div className="text-xs text-slate-500 mt-1">SC Judges (sanctioned)</div>
         </div>
         <div className="card p-5 text-center">
-          <div className="text-3xl font-display font-bold text-emerald-600">25</div>
+          <div className="text-3xl font-display font-bold text-emerald-600">{highCourts.length || 25}</div>
           <div className="text-xs text-slate-500 mt-1">High Courts</div>
         </div>
         <div className="card p-5 text-center">
@@ -54,8 +69,8 @@ export function JudiciaryDashboard({ courts, cases, writs }: Props) {
           <div className="text-xs text-slate-500 mt-1">Pending Cases (India)</div>
         </div>
         <div className="card p-5 text-center">
-          <div className="text-3xl font-display font-bold text-purple-600">1973</div>
-          <div className="text-xs text-slate-500 mt-1">Basic Structure Doctrine</div>
+          <div className="text-3xl font-display font-bold text-purple-600">{cases.length || 0}</div>
+          <div className="text-xs text-slate-500 mt-1">Landmark Judgments</div>
         </div>
       </div>
 
@@ -79,51 +94,15 @@ export function JudiciaryDashboard({ courts, cases, writs }: Props) {
         </div>
       </div>
 
-      {/* Panels */}
-      {activeTab === "hierarchy"  && <CourtHierarchyPanel />}
-      {activeTab === "highcourts" && <HighCourtsPanel />}
-      {activeTab === "judgments"  && <LandmarkJudgmentsPanel />}
+      {/* Panels — all receive DB data via props */}
+      {activeTab === "hierarchy"  && <CourtHierarchyPanel courts={hierarchyCourts} />}
+      {activeTab === "highcourts" && <HighCourtsPanel highCourts={highCourts} />}
+      {activeTab === "judgments"  && <LandmarkJudgmentsPanel cases={cases} />}
       {activeTab === "benches"    && <ConstitutionalBenchesPanel />}
       {activeTab === "pil"        && <PILWorkflowPanel />}
       {activeTab === "appeals"    && <AppealsFlowPanel />}
-      {activeTab === "graph"      && <JudgmentGraphPanel />}
-      {activeTab === "review"     && <JudicialReviewPanel />}
-
-      {/* Legacy DB data when seeded */}
-      {activeTab === "hierarchy" && courts.length > 0 && (
-        <div className="mt-8 card p-6">
-          <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-4">DB Court Records</h3>
-          <div className="space-y-3">
-            {courts.map((court) => (
-              <div key={court.id} className="border-l-4 border-l-emerald-400 pl-4 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">{court.name}</span>
-                  <span className="text-[10px] font-mono text-slate-400">{court.basis}</span>
-                </div>
-                {court.description && <p className="text-xs text-slate-500 mt-0.5">{court.description}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === "judgments" && cases.length > 0 && (
-        <div className="mt-8 card p-6">
-          <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-4">DB Landmark Cases</h3>
-          <div className="space-y-3">
-            {cases.slice(0, 5).map((c) => (
-              <div key={c.id} className="border-l-4 border-l-purple-400 pl-4 py-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">{c.name}</span>
-                  <span className="text-xs text-slate-400">{c.year}</span>
-                  {c.citation && <span className="font-mono text-[10px] text-slate-400">{c.citation}</span>}
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">{c.summary}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {activeTab === "graph"      && <JudgmentGraphPanel cases={cases} />}
+      {activeTab === "review"     && <JudicialReviewPanel writs={writs} />}
     </div>
   );
 }

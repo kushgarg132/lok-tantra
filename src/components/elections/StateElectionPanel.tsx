@@ -1,24 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { STATE_ASSEMBLIES } from "@/data/elections/intelligence";
+import type { AssemblyElection } from "./ElectionDashboard";
 
-export function StateElectionPanel() {
-  const [yearFilter, setYearFilter] = useState<"all" | "2024" | "2023" | "2022">("all");
+interface Props {
+  assemblyElections: AssemblyElection[];
+}
+
+export function StateElectionPanel({ assemblyElections }: Props) {
+  const years = ["all", ...Array.from(new Set(assemblyElections.map((e) => String(e.year))))].sort((a, b) =>
+    a === "all" ? -1 : b === "all" ? 1 : Number(b) - Number(a)
+  ) as string[];
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [selected, setSelected] = useState<string | null>(null);
 
-  const years = ["all", "2024", "2023", "2022"] as const;
-  const filtered = yearFilter === "all" ? STATE_ASSEMBLIES : STATE_ASSEMBLIES.filter(e => String(e.year) === yearFilter);
+  const filtered = yearFilter === "all" ? assemblyElections : assemblyElections.filter((e) => String(e.year) === yearFilter);
   const sorted = [...filtered].sort((a, b) => b.year - a.year || b.totalSeats - a.totalSeats);
-  const sel = selected ? STATE_ASSEMBLIES.find(e => e.state === selected) : null;
+  const sel = selected ? assemblyElections.find((e) => `${e.state}-${e.year}` === selected) : null;
 
   return (
     <div className="space-y-6">
-      {/* Summary: ruling party map */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h3 className="font-display font-bold text-slate-900 dark:text-slate-100">State Assembly Elections (2022–2024)</h3>
-          <div className="flex gap-1">
+          <h3 className="font-display font-bold text-slate-900 dark:text-slate-100">
+            State Assembly Elections ({years.filter((y) => y !== "all").at(-1)}–{years.filter((y) => y !== "all")[0]})
+          </h3>
+          <div className="flex gap-1 flex-wrap">
             {years.map((y) => (
               <button key={y} onClick={() => setYearFilter(y)}
                 className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${yearFilter === y ? "bg-saffron-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700"}`}>
@@ -30,12 +37,13 @@ export function StateElectionPanel() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {sorted.map((e) => {
-            const isSelected = selected === e.state;
+            const key = `${e.state}-${e.year}`;
+            const isSelected = selected === key;
             const winPct = ((e.winnerSeats / e.totalSeats) * 100).toFixed(0);
             return (
               <button
-                key={`${e.state}-${e.year}`}
-                onClick={() => setSelected(isSelected ? null : e.state)}
+                key={key}
+                onClick={() => setSelected(isSelected ? null : key)}
                 className={`p-4 rounded-xl border-2 text-left transition-all ${isSelected ? "border-saffron-400 bg-saffron-50 dark:bg-saffron-900/10" : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -47,13 +55,10 @@ export function StateElectionPanel() {
                     {e.winner}
                   </div>
                 </div>
-
-                {/* Seat bar */}
                 <div className="h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
                   <div className="h-full rounded-full" style={{ width: `${winPct}%`, backgroundColor: e.winnerColor }} />
                   <div className="h-full flex-1 bg-slate-200 dark:bg-slate-700" />
                 </div>
-
                 <div className="flex justify-between mt-1.5 text-[10px] text-slate-500">
                   <span style={{ color: e.winnerColor }} className="font-semibold">{e.winnerSeats} / {e.totalSeats} seats ({winPct}%)</span>
                   <span>{e.turnout}% turnout</span>
@@ -64,7 +69,6 @@ export function StateElectionPanel() {
         </div>
       </div>
 
-      {/* Selected state detail */}
       {sel && (
         <div className="card p-6 border-l-4" style={{ borderColor: sel.winnerColor }}>
           <h3 className="font-display font-bold text-slate-900 dark:text-slate-100 mb-4">
@@ -102,7 +106,6 @@ export function StateElectionPanel() {
               </div>
               <div className="flex-1 bg-slate-100 dark:bg-slate-800" />
             </div>
-            {/* Majority line */}
             <div className="relative h-4">
               <div className="absolute top-0 w-px h-4 bg-red-400"
                 style={{ left: `${(Math.ceil(sel.totalSeats / 2) / sel.totalSeats) * 100}%` }} />
@@ -119,15 +122,14 @@ export function StateElectionPanel() {
         </div>
       )}
 
-      {/* BJP domination insight */}
       <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-4">
         <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-2">Key Trends (2022–2024)</h4>
         <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1 list-disc list-inside">
           <li>BJP won 9 out of 19 state elections shown, including MP, Rajasthan, CG sweeps (2023).</li>
           <li>Congress rebounded in Karnataka (2023), Telangana (2023), Himachal (2022), and J&K (2024).</li>
           <li>JMM retained Jharkhand (2024) — second consecutive win for tribal-led alliance.</li>
-          <li>AAP's massive Punjab win (92/117 seats, 2022) signalled emergence as third national force.</li>
-          <li>TDP's landslide in Andhra (135/175, 2024) ended YSRCP's one-term dominance.</li>
+          <li>AAP&apos;s massive Punjab win (92/117 seats, 2022) signalled emergence as third national force.</li>
+          <li>TDP&apos;s landslide in Andhra (135/175, 2024) ended YSRCP&apos;s one-term dominance.</li>
         </ul>
       </div>
     </div>

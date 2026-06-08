@@ -1,4 +1,33 @@
-import { PARLIAMENT_2024, COALITIONS_2024 } from "@/data/elections/intelligence";
+interface ParliamentSeat { party: string; abbr: string; color: string; seats: number; alliance: "NDA" | "INDIA" | "Other" }
+
+const PARLIAMENT_2024: ParliamentSeat[] = [
+  { party: "JMM",        abbr: "JMM",    color: "#2E7D32", seats: 3,   alliance: "INDIA" },
+  { party: "AAP",        abbr: "AAP",    color: "#06B6D4", seats: 3,   alliance: "INDIA" },
+  { party: "Left",       abbr: "Left",   color: "#B91C1C", seats: 5,   alliance: "INDIA" },
+  { party: "RJD",        abbr: "RJD",    color: "#7F1D1D", seats: 4,   alliance: "INDIA" },
+  { party: "NCP (SP)",   abbr: "NCP-SP", color: "#7C3AED", seats: 8,   alliance: "INDIA" },
+  { party: "SS (UBT)",   abbr: "SS-UBT", color: "#F97316", seats: 9,   alliance: "INDIA" },
+  { party: "TMC",        abbr: "TMC",    color: "#059669", seats: 29,  alliance: "INDIA" },
+  { party: "DMK",        abbr: "DMK",    color: "#DC143C", seats: 22,  alliance: "INDIA" },
+  { party: "SP",         abbr: "SP",     color: "#EF4444", seats: 37,  alliance: "INDIA" },
+  { party: "INC",        abbr: "INC",    color: "#1565C0", seats: 99,  alliance: "INDIA" },
+  { party: "INDIA Oth.", abbr: "I-Oth",  color: "#475569", seats: 15,  alliance: "INDIA" },
+  { party: "YSRCP",      abbr: "YSRCP",  color: "#F59E0B", seats: 4,   alliance: "Other" },
+  { party: "Ind./Oth.",  abbr: "Oth",    color: "#9CA3AF", seats: 12,  alliance: "Other" },
+  { party: "NDA Oth.",   abbr: "NDA-O",  color: "#94A3B8", seats: 11,  alliance: "NDA"   },
+  { party: "LJP-RV",     abbr: "LJP",    color: "#FBBF24", seats: 5,   alliance: "NDA"   },
+  { party: "RLD",        abbr: "RLD",    color: "#34D399", seats: 2,   alliance: "NDA"   },
+  { party: "SS",         abbr: "SS",     color: "#EA580C", seats: 7,   alliance: "NDA"   },
+  { party: "JDU",        abbr: "JDU",    color: "#0891B2", seats: 12,  alliance: "NDA"   },
+  { party: "TDP",        abbr: "TDP",    color: "#D97706", seats: 16,  alliance: "NDA"   },
+  { party: "BJP",        abbr: "BJP",    color: "#FF9933", seats: 240, alliance: "NDA"   },
+];
+
+const COALITIONS_2024 = [
+  { name: "National Democratic Alliance", shortName: "NDA",   totalSeats: 293, color: "#FF9933", parties: [{ abbr: "BJP" }, { abbr: "TDP" }, { abbr: "JDU" }, { abbr: "SS" }, { abbr: "LJP" }, { abbr: "RLD" }, { abbr: "Oth" }] },
+  { name: "INDIA Alliance",              shortName: "INDIA", totalSeats: 234, color: "#1565C0", parties: [{ abbr: "INC" }, { abbr: "SP" }, { abbr: "TMC" }, { abbr: "DMK" }, { abbr: "SS-UBT" }, { abbr: "NCP-SP" }, { abbr: "RJD" }, { abbr: "JMM" }, { abbr: "AAP" }, { abbr: "Left" }, { abbr: "Oth" }] },
+  { name: "Unaffiliated",                shortName: "Others",totalSeats: 16,  color: "#64748B", parties: [{ abbr: "YSRCP" }, { abbr: "Oth" }] },
+];
 
 export type NodeType = "alliance" | "party";
 

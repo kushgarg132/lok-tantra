@@ -1,7 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { RS_COMPOSITION } from "@/data/elections/intelligence";
+interface RsParty { party: string; abbr: string; color: string; seats: number; alliance: "NDA" | "INDIA" | "Regional" | "Nominated" }
+
+const RS_COMPOSITION: RsParty[] = [
+  { party: "BJP",          abbr: "BJP",    color: "#FF9933", seats: 88, alliance: "NDA"       },
+  { party: "Congress",     abbr: "INC",    color: "#1565C0", seats: 26, alliance: "INDIA"     },
+  { party: "TMC",          abbr: "TMC",    color: "#059669", seats: 13, alliance: "INDIA"     },
+  { party: "YSRCP",        abbr: "YSRCP",  color: "#F59E0B", seats: 11, alliance: "Regional"  },
+  { party: "AAP",          abbr: "AAP",    color: "#06B6D4", seats: 10, alliance: "INDIA"     },
+  { party: "DMK",          abbr: "DMK",    color: "#DC143C", seats: 10, alliance: "INDIA"     },
+  { party: "BJD",          abbr: "BJD",    color: "#2563EB", seats: 8,  alliance: "Regional"  },
+  { party: "JDU",          abbr: "JDU",    color: "#0891B2", seats: 5,  alliance: "NDA"       },
+  { party: "BRS",          abbr: "BRS",    color: "#E91E63", seats: 5,  alliance: "Regional"  },
+  { party: "AIADMK",       abbr: "ADMK",   color: "#1B5E20", seats: 4,  alliance: "Regional"  },
+  { party: "CPM",          abbr: "CPM",    color: "#B91C1C", seats: 4,  alliance: "INDIA"     },
+  { party: "SP",           abbr: "SP",     color: "#EF4444", seats: 3,  alliance: "INDIA"     },
+  { party: "RJD",          abbr: "RJD",    color: "#7F1D1D", seats: 3,  alliance: "INDIA"     },
+  { party: "SS (Shinde)",  abbr: "SS",     color: "#EA580C", seats: 3,  alliance: "NDA"       },
+  { party: "NCP (Ajit)",   abbr: "NCP",    color: "#7C3AED", seats: 3,  alliance: "NDA"       },
+  { party: "SAD",          abbr: "SAD",    color: "#1E40AF", seats: 3,  alliance: "NDA"       },
+  { party: "SS (UBT)",     abbr: "SS-UBT", color: "#F97316", seats: 2,  alliance: "INDIA"     },
+  { party: "NCP (SP)",     abbr: "NCP-SP", color: "#A78BFA", seats: 2,  alliance: "INDIA"     },
+  { party: "Others",       abbr: "Oth",    color: "#64748B", seats: 28, alliance: "Regional"  },
+  { party: "Nominated",    abbr: "Nom",    color: "#94A3B8", seats: 12, alliance: "Nominated" },
+];
 
 const TOTAL_RS = 245;
 const MAJORITY_RS = 123;

@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ARTICLES_DATA } from "@/data/constitution/articles-data";
-
-const DPSP_ARTICLES = ARTICLES_DATA.filter(
-  (a) => a.category === "dpsp" || a.number === "51A"
-);
+import type { ArticleDTO } from "./ConstitutionExplorer";
 
 const DPSP_CATEGORIES = [
   {
@@ -86,20 +82,24 @@ const FR_VS_DPSP = [
   },
 ];
 
-export function DPSPExplorer() {
+interface Props { articles: ArticleDTO[] }
+
+export function DPSPExplorer({ articles }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [showDuties, setShowDuties] = useState(false);
 
+  const dpspArticles = articles.filter((a) => a.category === "dpsp" || a.number === "51A");
+
   const currentCategory = DPSP_CATEGORIES.find((c) => c.id === selectedCategory);
   const categoryArticles = currentCategory
     ? currentCategory.articles
-        .map((n) => DPSP_ARTICLES.find((a) => a.number === n))
+        .map((n) => dpspArticles.find((a) => a.number === n))
         .filter(Boolean)
     : [];
 
-  const fundamentalDuties = ARTICLES_DATA.find((a) => a.number === "51A");
+  const fundamentalDuties = articles.find((a) => a.number === "51A");
 
   return (
     <div className="space-y-6">
