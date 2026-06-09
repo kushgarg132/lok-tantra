@@ -76,6 +76,23 @@ so that all downstream features (graph rendering, Time Travel, profiles) can rel
   - [x] 8.11: Test: `getTenuresForPosition` returns all tenures for position
   - [x] 8.12: Run full test suite — all tests pass, zero regressions
 
+### Review Findings
+
+- [x] [Review][Defer] Migration parity test missing (AC #8) — deferred, old currentHolderId path removed so no comparison target exists; pure-function tests cover all 5 rules; add integration test when test-DB strategy is established
+- [ ] [Review][Patch] Representative files bypass getActiveTenure — use naive endDate===null [src/lib/data/representatives.ts:52, src/app/api/representatives/route.ts:37] — AC #4 requires all reads migrated to getActiveTenure. Both files use `tenures.find(t => t.endDate === null)` which doesn't implement 5 resolution rules and incorrectly matches future open-ended tenures.
+- [ ] [Review][Patch] N+1 query problem in tenure resolution [src/lib/data/institutions.ts:44-76, src/app/api/institutions/route.ts:36-55] — getInstitutionTree/getInstitutionBySlug fire per-position getActiveTenure queries. Old code used single SQL JOIN. getActiveTenure itself makes 2 queries for vacant positions, compounding the issue.
+- [ ] [Review][Patch] Seed script uses fragile designation substring matching [prisma/seed.ts:767-779] — "Deputy PM" matches "PM", "Secretary" matches "Joint Secretary". Same person can get multiple wrong tenure records. Fix: use explicit Person→Position ID mappings from seed data.
+- [ ] [Review][Patch] No unique constraint on Tenure (personId, positionId, startDate) [prisma/schema.prisma] — Nothing prevents duplicate tenure records. Add @@unique([personId, positionId, startDate]).
+- [ ] [Review][Patch] Dead code in API routes after early-return refactor [src/app/api/institutions/route.ts:57, src/app/api/representatives/route.ts:44] — Both routes have unreachable `return NextResponse.json({ data: null })` after early-return block.
+- [ ] [Review][Patch] project-context.md not updated to reflect test harness existence [_bmad-output/project-context.md:33,63-65] — Still says "no test harness exists" and "no *.test.ts files exist" — now false.
+- [ ] [Review][Patch] Seed script idempotency check incomplete [prisma/seed.ts:767] — findFirst only checks positionId, not personId. Re-seeding after person reassignment silently skips updated tenure.
+- [x] [Review][Defer] Seed tenures hardcoded to single date (2024-06-10) and "appointed" mechanism — deferred, seed quality improvement
+- [x] [Review][Defer] API routes return 200 with {data: null} instead of 404 for missing resources — deferred, pre-existing behavior
+- [x] [Review][Defer] Promise.all without error isolation in institution tenure resolution — deferred, general resilience pattern
+- [x] [Review][Defer] Institution positions/children silently truncated (take: 10/20) — deferred, pre-existing limits
+- [x] [Review][Defer] DB-backed getActiveTenure not directly tested (only pure function tested) — deferred, deliberate testing strategy
+- [x] [Review][Defer] Duplicate tenure resolution logic in API route vs data layer — deferred, pre-existing pattern difference in party field selection
+
 ## Dev Notes
 
 ### Tenure Prisma Model (exact schema to add)

@@ -1,174 +1,174 @@
-name: CD — Deploy
+# name: CD — Deploy
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: Target environment
-        type: choice
-        options: [staging, production]
-        default: staging
-      image_tag:
-        description: Image tag to deploy (default: latest sha)
-        required: false
+# on:
+#   push:
+#     branches: [main]
+#   workflow_dispatch:
+#     inputs:
+#       environment:
+#         description: Target environment
+#         type: choice
+#         options: [staging, production]
+#         default: staging
+#       image_tag:
+#         description: Image tag to deploy (default: latest sha)
+#         required: false
 
-env:
-  REGISTRY:   ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-  GKE_CLUSTER:  loktantra-prod
-  GKE_REGION:   asia-south1
-  GKE_PROJECT:  loktantra-prod
+# env:
+#   REGISTRY:   ghcr.io
+#   IMAGE_NAME: ${{ github.repository }}
+#   GKE_CLUSTER:  loktantra-prod
+#   GKE_REGION:   asia-south1
+#   GKE_PROJECT:  loktantra-prod
 
-jobs:
-  # ── Deploy to Staging ────────────────────────────────────────────────────────
-  deploy-staging:
-    name: Deploy → Staging
-    runs-on: ubuntu-latest
-    environment:
-      name: staging
-      url: https://staging.loktantra.in
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   # ── Deploy to Staging ────────────────────────────────────────────────────────
+#   deploy-staging:
+#     name: Deploy → Staging
+#     runs-on: ubuntu-latest
+#     environment:
+#       name: staging
+#       url: https://staging.loktantra.in
+#     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+#       - name: Authenticate to Google Cloud
+#         uses: google-github-actions/auth@v2
+#         with:
+#           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
+#       - name: Set up gcloud
+#         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ env.GKE_CLUSTER }}-staging
-          location:     ${{ env.GKE_REGION }}
-          project_id:   ${{ env.GKE_PROJECT }}
+#       - name: Get GKE credentials
+#         uses: google-github-actions/get-gke-credentials@v2
+#         with:
+#           cluster_name: ${{ env.GKE_CLUSTER }}-staging
+#           location:     ${{ env.GKE_REGION }}
+#           project_id:   ${{ env.GKE_PROJECT }}
 
-      - name: Compute image tag
-        id: tag
-        run: |
-          TAG=${{ github.event.inputs.image_tag || format('sha-{0}', github.sha) }}
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+#       - name: Compute image tag
+#         id: tag
+#         run: |
+#           TAG=${{ github.event.inputs.image_tag || format('sha-{0}', github.sha) }}
+#           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-      - name: Deploy to staging
-        run: |
-          IMG_APP="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/app:${{ steps.tag.outputs.tag }}"
-          IMG_WORKER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ steps.tag.outputs.tag }}"
+#       - name: Deploy to staging
+#         run: |
+#           IMG_APP="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/app:${{ steps.tag.outputs.tag }}"
+#           IMG_WORKER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ steps.tag.outputs.tag }}"
 
-          # Run DB migrations via kubectl job
-          kubectl -n loktantra-staging set image job/db-migrate \
-            migrate="${IMG_APP}" --dry-run=client -o yaml | kubectl apply -f -
+#           # Run DB migrations via kubectl job
+#           kubectl -n loktantra-staging set image job/db-migrate \
+#             migrate="${IMG_APP}" --dry-run=client -o yaml | kubectl apply -f -
 
-          # Roll out new images
-          kubectl -n loktantra-staging set image deployment/loktantra-app   app="${IMG_APP}"
-          kubectl -n loktantra-staging set image deployment/loktantra-worker worker="${IMG_WORKER}"
+#           # Roll out new images
+#           kubectl -n loktantra-staging set image deployment/loktantra-app   app="${IMG_APP}"
+#           kubectl -n loktantra-staging set image deployment/loktantra-worker worker="${IMG_WORKER}"
 
-          # Wait for rollout
-          kubectl -n loktantra-staging rollout status deployment/loktantra-app   --timeout=5m
-          kubectl -n loktantra-staging rollout status deployment/loktantra-worker --timeout=5m
+#           # Wait for rollout
+#           kubectl -n loktantra-staging rollout status deployment/loktantra-app   --timeout=5m
+#           kubectl -n loktantra-staging rollout status deployment/loktantra-worker --timeout=5m
 
-      - name: Smoke test staging
-        run: |
-          sleep 15
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.loktantra.in/api/health)
-          if [ "$STATUS" != "200" ]; then
-            echo "Smoke test failed — HTTP $STATUS"
-            exit 1
-          fi
-          echo "Smoke test passed"
+#       - name: Smoke test staging
+#         run: |
+#           sleep 15
+#           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.loktantra.in/api/health)
+#           if [ "$STATUS" != "200" ]; then
+#             echo "Smoke test failed — HTTP $STATUS"
+#             exit 1
+#           fi
+#           echo "Smoke test passed"
 
-  # ── Deploy to Production (requires approval) ─────────────────────────────────
-  deploy-production:
-    name: Deploy → Production
-    runs-on: ubuntu-latest
-    needs: deploy-staging
-    environment:
-      name: production
-      url: https://loktantra.in
-    if: |
-      github.ref == 'refs/heads/main' ||
-      github.event.inputs.environment == 'production'
-    steps:
-      - uses: actions/checkout@v4
+#   # ── Deploy to Production (requires approval) ─────────────────────────────────
+#   deploy-production:
+#     name: Deploy → Production
+#     runs-on: ubuntu-latest
+#     needs: deploy-staging
+#     environment:
+#       name: production
+#       url: https://loktantra.in
+#     if: |
+#       github.ref == 'refs/heads/main' ||
+#       github.event.inputs.environment == 'production'
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+#       - name: Authenticate to Google Cloud
+#         uses: google-github-actions/auth@v2
+#         with:
+#           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ env.GKE_CLUSTER }}
-          location:     ${{ env.GKE_REGION }}
-          project_id:   ${{ env.GKE_PROJECT }}
+#       - name: Get GKE credentials
+#         uses: google-github-actions/get-gke-credentials@v2
+#         with:
+#           cluster_name: ${{ env.GKE_CLUSTER }}
+#           location:     ${{ env.GKE_REGION }}
+#           project_id:   ${{ env.GKE_PROJECT }}
 
-      - name: Compute image tag
-        id: tag
-        run: |
-          TAG=${{ github.event.inputs.image_tag || format('sha-{0}', github.sha) }}
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+#       - name: Compute image tag
+#         id: tag
+#         run: |
+#           TAG=${{ github.event.inputs.image_tag || format('sha-{0}', github.sha) }}
+#           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-      - name: Run database migrations
-        run: |
-          IMG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/app:${{ steps.tag.outputs.tag }}"
-          cat <<EOF | kubectl apply -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: db-migrate-$(echo $GITHUB_SHA | head -c 7)
-            namespace: loktantra
-          spec:
-            ttlSecondsAfterFinished: 300
-            template:
-              spec:
-                restartPolicy: Never
-                containers:
-                - name: migrate
-                  image: ${IMG}
-                  command: ["npx", "prisma", "migrate", "deploy"]
-                  envFrom:
-                  - secretRef:
-                      name: loktantra-secrets
-          EOF
-          kubectl -n loktantra wait job/db-migrate-$(echo $GITHUB_SHA | head -c 7) \
-            --for=condition=complete --timeout=5m
+#       - name: Run database migrations
+#         run: |
+#           IMG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/app:${{ steps.tag.outputs.tag }}"
+#           cat <<EOF | kubectl apply -f -
+#           apiVersion: batch/v1
+#           kind: Job
+#           metadata:
+#             name: db-migrate-$(echo $GITHUB_SHA | head -c 7)
+#             namespace: loktantra
+#           spec:
+#             ttlSecondsAfterFinished: 300
+#             template:
+#               spec:
+#                 restartPolicy: Never
+#                 containers:
+#                 - name: migrate
+#                   image: ${IMG}
+#                   command: ["npx", "prisma", "migrate", "deploy"]
+#                   envFrom:
+#                   - secretRef:
+#                       name: loktantra-secrets
+#           EOF
+#           kubectl -n loktantra wait job/db-migrate-$(echo $GITHUB_SHA | head -c 7) \
+#             --for=condition=complete --timeout=5m
 
-      - name: Blue/Green rollout (production)
-        run: |
-          IMG_APP="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/app:${{ steps.tag.outputs.tag }}"
-          IMG_WORKER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ steps.tag.outputs.tag }}"
+#       - name: Blue/Green rollout (production)
+#         run: |
+#           IMG_APP="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/app:${{ steps.tag.outputs.tag }}"
+#           IMG_WORKER="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ steps.tag.outputs.tag }}"
 
-          kubectl -n loktantra set image deployment/loktantra-app   app="${IMG_APP}"
-          kubectl -n loktantra set image deployment/loktantra-worker worker="${IMG_WORKER}"
+#           kubectl -n loktantra set image deployment/loktantra-app   app="${IMG_APP}"
+#           kubectl -n loktantra set image deployment/loktantra-worker worker="${IMG_WORKER}"
 
-          kubectl -n loktantra rollout status deployment/loktantra-app   --timeout=10m
-          kubectl -n loktantra rollout status deployment/loktantra-worker --timeout=10m
+#           kubectl -n loktantra rollout status deployment/loktantra-app   --timeout=10m
+#           kubectl -n loktantra rollout status deployment/loktantra-worker --timeout=10m
 
-      - name: Production smoke test
-        run: |
-          sleep 20
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://loktantra.in/api/health)
-          if [ "$STATUS" != "200" ]; then
-            echo "Production smoke test FAILED — HTTP $STATUS — initiating rollback"
-            kubectl -n loktantra rollout undo deployment/loktantra-app
-            kubectl -n loktantra rollout undo deployment/loktantra-worker
-            exit 1
-          fi
-          echo "Production healthy"
+#       - name: Production smoke test
+#         run: |
+#           sleep 20
+#           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://loktantra.in/api/health)
+#           if [ "$STATUS" != "200" ]; then
+#             echo "Production smoke test FAILED — HTTP $STATUS — initiating rollback"
+#             kubectl -n loktantra rollout undo deployment/loktantra-app
+#             kubectl -n loktantra rollout undo deployment/loktantra-worker
+#             exit 1
+#           fi
+#           echo "Production healthy"
 
-      - name: Notify deployment
-        if: always()
-        uses: slackapi/slack-github-action@v1.26.0
-        with:
-          payload: |
-            {
-              "text": "${{ job.status == 'success' && '✅' || '🚨' }} LokTantra production deploy ${{ job.status }}: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ steps.tag.outputs.tag }}>"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        continue-on-error: true
+#       - name: Notify deployment
+#         if: always()
+#         uses: slackapi/slack-github-action@v1.26.0
+#         with:
+#           payload: |
+#             {
+#               "text": "${{ job.status == 'success' && '✅' || '🚨' }} LokTantra production deploy ${{ job.status }}: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ steps.tag.outputs.tag }}>"
+#             }
+#         env:
+#           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+#         continue-on-error: true
