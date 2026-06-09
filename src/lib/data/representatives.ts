@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getTenuresForPerson } from "@/lib/data/tenure";
 
 export async function getRepresentatives(filters?: {
   state?: string;
@@ -36,14 +37,24 @@ export async function getRepresentatives(filters?: {
 }
 
 export async function getRepresentativeById(id: string) {
-  return prisma.person.findUnique({
+  const person = await prisma.person.findUnique({
     where: { id },
     include: {
       party: true,
-      currentPosition: { include: { institution: true } },
       electionResults: { include: { constituency: true } },
     },
   });
+
+  if (!person) return null;
+
+  // Resolve current position via Tenure
+  const tenures = await getTenuresForPerson(id);
+  const activeTenure = tenures.find((t) => t.endDate === null) ?? null;
+  const currentPosition = activeTenure
+    ? { ...activeTenure.position, institution: activeTenure.position.institution }
+    : null;
+
+  return { ...person, currentPosition };
 }
 
 export async function getDistinctStates() {

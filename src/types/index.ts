@@ -168,7 +168,7 @@ export interface PowerNode {
   branch?: Branch;
   parent?: string;
   children?: string[];
-  currentHolder?: PersonBrief;
+  currentHolder?: PersonBrief | null;
   powers: string[];
   constitutionalArticle?: string;
   appointedBy?: string;

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { getTenuresForPerson } from "@/lib/data/tenure";
 
 const QuerySchema = z.object({
   state:   z.string().max(100).optional(),
@@ -26,10 +27,20 @@ export async function GET(request: Request) {
       const person = await prisma.person.findUnique({
         where: { id },
         include: {
-          party:           { select: { id: true, name: true, abbreviation: true, color: true, logoUrl: true } },
-          currentPosition: { include: { institution: { select: { id: true, name: true, slug: true } } } },
+          party: { select: { id: true, name: true, abbreviation: true, color: true, logoUrl: true } },
         },
       });
+
+      if (person) {
+        // Resolve current position via Tenure
+        const tenures = await getTenuresForPerson(id);
+        const activeTenure = tenures.find((t) => t.endDate === null) ?? null;
+        const currentPosition = activeTenure
+          ? { ...activeTenure.position, institution: activeTenure.position.institution }
+          : null;
+        return NextResponse.json({ data: { ...person, currentPosition } });
+      }
+
       return NextResponse.json({ data: person });
     }
 

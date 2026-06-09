@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getActiveTenure } from "@/lib/data/tenure";
 
 export async function getAllInstitutions() {
   return prisma.institution.findMany({
@@ -8,27 +9,70 @@ export async function getAllInstitutions() {
 }
 
 export async function getInstitutionBySlug(slug: string) {
-  return prisma.institution.findUnique({
+  const institution = await prisma.institution.findUnique({
     where: { slug },
     include: {
       children: true,
       parent: true,
-      positions: { include: { currentHolder: { include: { party: true } } } },
+      positions: true,
     },
   });
+
+  if (!institution) return null;
+
+  // Resolve current holders via Tenure for each position
+  const positionsWithHolders = await Promise.all(
+    institution.positions.map(async (position) => {
+      const activeTenure = await getActiveTenure(position.id);
+      const currentHolder =
+        activeTenure && activeTenure !== "not-yet-established"
+          ? {
+              id: activeTenure.person.id,
+              name: activeTenure.person.name,
+              designation: activeTenure.person.designation,
+              photoUrl: activeTenure.person.photoUrl,
+              party: activeTenure.person.party,
+            }
+          : null;
+      return { ...position, currentHolder };
+    }),
+  );
+
+  return { ...institution, positions: positionsWithHolders };
 }
 
 export async function getInstitutionTree() {
   const all = await prisma.institution.findMany({
     include: {
-      positions: {
-        include: { currentHolder: { include: { party: true } } },
-      },
+      positions: true,
     },
     orderBy: { name: "asc" },
   });
 
-  return all;
+  // Resolve current holders via Tenure for each position across all institutions
+  const result = await Promise.all(
+    all.map(async (inst) => {
+      const positionsWithHolders = await Promise.all(
+        inst.positions.map(async (position) => {
+          const activeTenure = await getActiveTenure(position.id);
+          const currentHolder =
+            activeTenure && activeTenure !== "not-yet-established"
+              ? {
+                  id: activeTenure.person.id,
+                  name: activeTenure.person.name,
+                  designation: activeTenure.person.designation,
+                  photoUrl: activeTenure.person.photoUrl,
+                  party: activeTenure.person.party,
+                }
+              : null;
+          return { ...position, currentHolder };
+        }),
+      );
+      return { ...inst, positions: positionsWithHolders };
+    }),
+  );
+
+  return result;
 }
 
 export async function searchInstitutions(query: string) {

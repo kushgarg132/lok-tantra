@@ -1,12 +1,11 @@
 ---
-title: Politician Hierarchy & Historical Power Explorer
-status: draft
+title: Power Explorer
+status: final
 created: 2026-06-08
 updated: 2026-06-08
 ---
 
-# PRD: Politician Hierarchy & Historical Power Explorer
-*Working title — confirm.*
+# PRD: Power Explorer
 
 ## 0. Document Purpose
 
@@ -26,7 +25,7 @@ This is for anyone who has ever read a civics textbook and immediately forgotten
 
 - **Functional (primary)**: "I need to understand how India's government actually works, beyond the textbook version" — replacing rote-memorized facts with a mental model of how power is structured, granted, and connected to the Constitution.
 
-### 2.3 Key User Journeys
+### 2.2 Key User Journeys
 *Numbered globally as UJ-1 through UJ-N. FRs reference journeys by ID inline.*
 
 - **UJ-1. Aman finally understands the Cabinet reshuffle everyone's talking about.**
@@ -42,7 +41,7 @@ This is for anyone who has ever read a civics textbook and immediately forgotten
   - **Path:** Drags the scrubber back to 1977 on a whim → the graph visibly reorganizes (different faces, party colors, some posts don't exist yet) → drags further to 1947 and watches the structure thin to its barest constitutional skeleton.
   - **Climax:** She realizes she can *show* her students how the system evolved, not just describe it.
   - **Resolution:** She has a clear before/after mental model to bring into her lesson tomorrow.
-  - *(Snapshot/bookmark-a-moment is explicitly deferred — see [NON-GOAL for MVP] in §6.)*
+  - *(Snapshot/bookmark-a-moment is explicitly deferred — see [NON-GOAL for MVP] in §8.2.)*
 
 ## 3. Glossary
 *Downstream workflows and readers must use these terms exactly. FRs, UJs, and SMs use Glossary terms verbatim.*
@@ -68,7 +67,7 @@ This is for anyone who has ever read a civics textbook and immediately forgotten
 A user can open the Power Graph and see the current national-layer structure (President, PM, Union Cabinet & Ministers, central institutions, judiciary apex) centered on the Prime Minister's Office.
 
 **Consequences (testable):**
-- Initial render completes and is interactive on a mobile device within LokTantra's existing performance expectations [ASSUMPTION: specific budget TBD with architecture — flagged in §8].
+- Initial render completes and is interactive on a mobile device within LokTantra's existing performance expectations [ASSUMPTION: specific budget TBD with architecture — see §10, Open Question #1].
 - Every visible Node displays its current occupant's name and photo (or a clear "vacant"/"unknown" state if data is missing).
 
 #### FR-2: Drill through a Node's connections
@@ -79,7 +78,7 @@ A user can tap any Node to expand its directly connected Nodes (superior, subord
 - The user can collapse back to the prior view without a full reload.
 
 **Out of Scope:**
-- State-level and individual MP/MLA/constituency Nodes — `[NON-GOAL for MVP]`, deferred to a later expansion wave (see §6.2).
+- State-level and individual MP/MLA/constituency Nodes — `[NON-GOAL for MVP]`, deferred to a later expansion wave (see §8.2).
 
 ### 4.2 Person & Office Profiles
 **Description:** Tapping a Person Node opens a profile that answers "how did they get here, and what does this job actually carry?" — their photo, party, constituency, a traced career path across prior Tenures, the powers and responsibilities of their current Office, and Accountability Data (assets, criminal cases, election history) sourced from ADR/MyNeta. Realizes UJ-1.
@@ -92,6 +91,7 @@ A user can see a Person's traced sequence of prior Tenures (Office + date range)
 **Consequences (testable):**
 - The career path renders in chronological order with at least Office name and date range per step.
 - Tapping a prior Tenure step navigates Time Travel (§4.4) to that period, centered on that Person — the profile is a doorway into the living graph, not a disconnected mini-timeline. Realizes UJ-2.
+- Each step displays only Office, dates, and (where known) the factual mechanism of transition (e.g. "appointed," "elected," "succeeded") — never narrative framing, commentary, or characterization of *how* or *why* the move happened. A career path is a sequence of facts, not a story arc. Directly enforces §5 Neutrality and the no-editorializing Non-Goal in §7.
 
 #### FR-4: View an Office's powers and responsibilities
 A user can see a plain-language description of what an Office can do, sourced from and linked to its Constitutional Citation(s).
@@ -105,6 +105,7 @@ A user can see a Person's declared assets, criminal case records, and election h
 **Consequences (testable):**
 - Accountability Data displays its source and last-updated date, consistent with LokTantra's "source-verifiable" design principle.
 - Missing Accountability Data is shown as an explicit "not available" state, never silently omitted.
+- Every Person's Accountability Data renders through the **same template, fields, and depth**, regardless of their current media salience, party, or how controversial they are — comparative symmetry is enforced structurally by the template, not decided case-by-case. (Faithful sourcing alone doesn't prevent selective emphasis; symmetry of *treatment* is what closes that gap. Directly extends §5 Neutrality.)
 
 **Feature-specific NFRs:**
 - Accountability Data must carry source attribution per LokTantra's neutrality/source-verifiability principles (`CLAUDE.md`).
@@ -124,18 +125,22 @@ A user can tap a Constitutional Citation attached to an Edge or Office and see a
 ### 4.4 Time Travel
 **Description:** A continuous scrubber lets the user select any date between 1947 and the present; the entire Power Graph re-renders to show who held each Office as of that date, resolved via the active Tenure for each Office on that date (last-known-state for in-between dates). This is what makes the system feel like "the Constitution in motion" rather than a static snapshot. Realizes UJ-2.
 
+`[NOTE FOR PM: this is the PRD's single highest-risk feature — its buildability rests on a national-level historical Tenure dataset back to 1947 that does not appear to exist yet. Open Question #3 has been reframed below from a feasibility check into a scoping decision with a fallback; resolve it before this feature is sized for architecture so "1947" doesn't stay load-bearing on an unverified assumption.]`
+
 **Functional Requirements:**
 
 #### FR-7: Scrub to any date and see the graph reorganize
-A user can drag a continuous scrubber to any date from 15 August 1947 to today, and the Power Graph re-renders to reflect the Tenures active on that date.
+A user can drag a continuous scrubber to any date from 15 August 1947 — or the fallback start date the PM locks in via Open Question #3 — to today, and the Power Graph re-renders to reflect the Tenures active on that date.
 
 **Consequences (testable):**
 - For any selected date, each Office resolves to the Tenure whose start date is the most recent one at or before the selected date ("last known state"), per the confirmed gap-handling rule.
-- Re-rendering completes within the same interactivity budget as the initial graph load (FR-1).
-- Offices that did not yet exist as of the selected date are visibly absent or marked "not yet established," not shown as empty/vacant.
+- **On the exact date a Tenure begins, the graph shows the new Tenure as active** (start dates are inclusive) — this boundary rule is explicit and testable, not left to implementation discretion.
+- The data model and UI distinguish three states an Office can be in as of a selected date, each rendered distinctly: **occupied** (an active Tenure resolves), **vacant** (the Office exists but no Tenure is currently active — e.g. a gap between appointments), and **not yet established / discontinued** (the date falls outside the Office's constitutional existence window, whether because it was created later or abolished/restructured earlier). This names the specific cases Open Question #5 was pointing at, so it is a locked consequence rather than something an engineer discovers mid-build.
+- Where source records specify only a year (common for older Tenures), the system resolves to a stated convention (e.g. 1 January of that year) and visibly marks the date as **approximate** — precision is never invented where the historical record doesn't have it.
+- Re-rendering completes within the same interactivity budget as the initial graph load (FR-1) — see Open Question #1 for how that budget gets set, including the pre-approved fallback if continuous scrubbing proves infeasible on mobile.
 
 **Out of Scope:**
-- Saving/bookmarking a specific date as a "snapshot" — `[NON-GOAL for MVP]` (see §6.2).
+- Saving/bookmarking a specific date as a "snapshot" — `[NON-GOAL for MVP]` (see §8.2).
 
 ### 4.5 Search & Discovery
 **Description:** A user who already knows who or what they're looking for can search directly — by Person name, Office title, or party — and jump straight into the graph at that Node, rather than browsing from the top.
@@ -143,18 +148,20 @@ A user can drag a continuous scrubber to any date from 15 August 1947 to today, 
 **Functional Requirements:**
 
 #### FR-8: Search the power graph directly
-A user can search by Person name, Office title, or party, and select a result to jump directly to that Node within the current graph view (respecting whatever date Time Travel is currently set to).
+A user can search by Person name, Office title, or party, and select a result to jump directly to that Node within the current graph view, respecting the selected Time Travel date.
 
 **Consequences (testable):**
-- Search returns results within LokTantra's existing search-route conventions (paginated, debounced) [ASSUMPTION: reuses existing `/api/search` infrastructure rather than a bespoke endpoint — confirm with architecture].
-- Selecting a result centers the graph on that Node and preserves the currently selected Time Travel date.
+- Search returns results within LokTantra's existing search-route conventions (paginated, debounced); the underlying retrieval mechanism — `/api/search` reuse vs. new graph-aware resolution — is an open question for architecture (see §10, Open Question #4).
+- Selecting a result centers the graph on that Node and preserves the selected Time Travel date.
 
 ## 5. Constraints and Guardrails
 
-**Neutrality** *(explicit guardrail — directly serves LokTantra's "politically neutral, no party advocacy" principle from `CLAUDE.md`, and is non-negotiable for a feature that visually maps real politicians and parties):*
-- Visual treatment of any Node — layout, size, prominence, ordering — is determined **structurally or chronologically** (constitutional rank, tenure dates, hierarchy position) and never editorially curated by party, popularity, or current events.
-- Party colors and logos render as **factual attributes** of a Person/Office (consistent with how `PartyTracker` and other existing LokTantra components already treat party colors) — never as emphasis, endorsement, or visual favoritism.
-- Every Office and every Person at an equivalent constitutional rank receives equivalent data depth and visual treatment — no figure or party is foregrounded relative to peers holding comparable positions.
+**Neutrality** *(explicit guardrail — directly serves LokTantra's "politically neutral, no party advocacy" principle from `CLAUDE.md`, and is non-negotiable for a feature that visually maps real politicians and parties)*. The first bullet governs *prominence*; the rest exist because prominence alone isn't where neutrality risk lives — content, framing, and what travels outside the app matter just as much:
+
+- **Prominence is structural, not editorial.** Visual treatment of any Node — layout, size, prominence, ordering — is determined **structurally or chronologically** (constitutional rank, tenure dates, hierarchy position) and never editorially curated by party, popularity, or current events. The default view centers on the *Office* of the Prime Minister — the constitutional apex of the executive — not on whoever currently holds it; Time Travel is what then reveals the full range of people who have occupied that Office across history. That range, however lopsided real history makes it look, is the feature's point — not a side effect to design around.
+- **Party color is a secondary, neutral-palette cue — not party branding.** Party colors/logos render as **factual attributes**, using a consistent, LokTantra-defined neutral palette convention (not parties' own brand identities, which carry their own connotations), and the structural/chronological layout above remains the *primary* visual organizer with color strictly secondary. This is a deliberate mitigation, not a claim that color-coding is inert — grouping by color is a real perceptual cue, so layout must never lean on it to do organizational work.
+- **Comparative symmetry is enforced by template, not judgment call.** Every Person and every Office at an equivalent constitutional rank receives identical data depth, fields, and presentation template — see FR-5's consequence for how this binds Accountability Data specifically. Faithful sourcing alone doesn't prevent selective emphasis; symmetry of *treatment* is what closes that gap.
+- **Context travels with the content.** Because graph views and profile cards are explicitly designed to be shared and screenshotted (UJ-1, SM-2), source attribution, the selected Time Travel date, and constitutional citations render **inline and visible** on the card or view itself — never hidden behind a tap or tooltip — so that even a cropped, decontextualized fragment carries its own provenance and can't be presented as something the platform didn't actually say.
 
 **Source-Verifiability & Privacy:**
 - All Accountability Data (FR-5) carries explicit source attribution and last-updated date, per `CLAUDE.md`'s "source-verifiable" principle.
@@ -164,7 +171,7 @@ A user can search by Person name, Office title, or party, and select a result to
 
 **Platform:** Mobile-first, responsive web — consistent with LokTantra's existing Next.js/Tailwind stack. The graph visualization is designed for touch and small screens first, then scaled up to larger viewports. `[ASSUMPTION: no native app is planned — flag if that's wrong.]`
 
-**Information Architecture:** This feature **replaces** the existing `/power-structure` route and `PowerHierarchyExplorer` component outright — it supersedes that experience entirely (real people + drill-down + Time Travel vs. a static institutional tree showing only current office-holders). `[NOTE FOR PM: the migration/redirect plan for the old route is an architecture-phase concern — carried into §9 Open Questions, not decided here.]`
+**Information Architecture:** This feature **replaces** the existing `/power-structure` route and `PowerHierarchyExplorer` component outright — it supersedes that experience entirely (real people + drill-down + Time Travel vs. a static institutional tree showing only current office-holders). `[NOTE FOR PM: the migration/redirect plan for the old route is an architecture-phase concern — carried into §10 Open Questions (#2), not decided here.]`
 
 ## 7. Non-Goals (Explicit)
 - This is not a news or current-events feed — it shows structure and history, not commentary or analysis on unfolding political developments.
@@ -178,7 +185,7 @@ A user can search by Person name, Office title, or party, and select a result to
 - National/central-layer Power Graph (President, PM, Union Cabinet & Ministers, central institutions, judiciary apex), centered on the PM, with full drill navigation — FR-1, FR-2
 - Person & Office Profiles: career path, office powers with constitutional grounding, Accountability Data from ADR/MyNeta — FR-3, FR-4, FR-5
 - Constitutional Grounding inline explainers — FR-6
-- Continuous Time Travel scrubber, 1947–present, last-known-state resolution — FR-7
+- Continuous Time Travel scrubber, last-known-state resolution, **start date pending the §10 Open Question #3 scoping decision** (target 1947, fallback ~1990 with 1947 as a later expansion wave) — FR-7
 - Search by Person, Office, or party — FR-8
 - Full replacement of `/power-structure` with this experience
 
@@ -204,14 +211,13 @@ A user can search by Person name, Office title, or party, and select a result to
 - **SM-C2**: Reach growth must *not* come from skewing visual prominence toward sensational, controversial, or currently-trending figures — that would directly violate the §5 Neutrality guardrail (structural/chronological treatment only). Counterbalances SM-1 and SM-2: growth must come from the quality and clarity of the experience, never from algorithmic amplification of any person or party.
 
 ## 10. Open Questions
-1. **Performance budget**: What's the target load/re-render time for the Power Graph on mobile, and how does it sit within LokTantra's existing performance expectations? Affects FR-1, FR-7 — needs architecture input before epics are cut.
+1. **Performance budget — needs a spike before it needs a number**: Continuous-scrub re-rendering of an interactive graph on mobile is something nothing in LokTantra's current stack has done (the only live Cytoscape usage today is a small, statically-laid-out graph) — so the right next step isn't "pick a millisecond target," it's "run a technical spike to learn what's achievable, then set the target from evidence." **Pre-approved fallback** if continuous scrubbing can't hit a workable budget on mobile: an anchored-to-known-transitions scrubber — the alternative explicitly considered and deferred during this PRD's drafting (see `.decision-log.md`, 2026-06-08). That fallback is *not* a redesign; architecture can reach for it directly without a new round of PM sign-off. Affects FR-1, FR-7.
 2. **Migration plan**: How should the existing `/power-structure` route and `PowerHierarchyExplorer` component be retired or redirected once this feature replaces them (§6)? Architecture-phase concern.
-3. **Historical data availability**: Is there a sourced, verifiable dataset of national-layer Tenures (PM, Cabinet, key institutions) reaching back to 1947 — or does "continuous Time Travel to 1947" require new ETL/ingestion work of its own? This is the single biggest determinant of whether FR-7 is buildable as scoped, and should be validated **before** the architecture/epics phase, not discovered during it.
-4. **Search infrastructure**: Does Search & Discovery (FR-8) reuse the existing `/api/search` Elasticsearch pipeline, or does graph-specific search (jump-to-Node while preserving Time Travel state) need its own approach?
-5. **"Vacant" vs. "not yet established" states**: FR-1 and FR-7 both depend on distinguishing an Office that's *currently vacant* from one that *doesn't exist yet* as of a selected date — does the underlying data model already support that distinction, or does it need to be defined as part of this work?
+3. **Historical data depth — a scoping decision with a fallback, not a yes/no feasibility check**: The available evidence (LokTantra's newest political dataset, `prisma/seed-political.ts`, is 100% hand-curated *current-day* data with zero historical rows, and no `Tenure`/Office-occupancy model exists yet in `prisma/schema.prisma`) strongly suggests the honest answer to "is there a sourced dataset back to 1947" is **no — assembling and verifying ~75 years of national-level Tenure records is itself a multi-month sourcing and data-modeling effort**, not a gap a feature build closes incidentally. `[NOTE FOR PM: this is a decision for you to make, not a fact for research to surface — the data almost certainly isn't there yet.]` The call to make: should MVP's Time Travel range start at a shallower, more sourceable depth (a commonly-used anchor is ~1990 onward, where records are denser and easier to verify) and extend to 1947 as its own expansion wave — the same "ship the shape, widen the data later" pattern already used for the state/MP/MLA cuts in §8.2? This must be resolved **before** FR-7 is sized for architecture; it is the single biggest determinant of whether "Time Travel to 1947" survives MVP as scoped.
+4. **Search infrastructure — likely needs new graph-aware work, not a reuse**: §11 originally carried "reuses `/api/search`" as a working assumption. On inspection, that pipeline is built for *document* retrieval (BM25+KNN over text content), while "jump to a Node while preserving the active Time Travel date" is a *temporal graph-resolution* query — a different problem shape that most likely needs new `GraphService` work regardless of which HTTP route fronts it. Treat reuse as unlikely rather than default, and confirm the real shape with architecture.
+5. **Data-model support for the three Office states**: FR-7 (§4.4) now names and locks the three states an Office can be in as of a selected date — occupied, vacant, and not-yet-established/discontinued. What remains genuinely open is whether `prisma/schema.prisma`'s current shape (which, per Open Question #3, has no `Tenure` model at all yet) can represent all three without a redesign, or whether this is simply part of the same data-modeling effort OQ#3 is already naming.
 
 ## 11. Assumptions Index
 *Every `[ASSUMPTION]` from the document, surfaced for explicit confirmation:*
-- From §4.1 (FR-1) / §4.4 (FR-7) — performance/interactivity budget for graph load and re-render is left to architecture to set, not invented here. See Open Question #1.
+- From §4.1 (FR-1) / §4.4 (FR-7) — performance/interactivity budget for graph load and re-render is left to architecture to set, not invented here, **and is now understood to require a technical spike before any number can be proposed** (no precedent for continuous-scrub graph re-rendering exists in the current stack). See Open Question #1, including its pre-approved fallback.
 - From §6 Platform — no native app is planned; this ships as responsive, mobile-first web only, consistent with LokTantra's existing Next.js stack.
-- From §4.5 (FR-8) — Search & Discovery is assumed to reuse LokTantra's existing `/api/search` infrastructure rather than a bespoke endpoint. See Open Question #4.

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { getActiveTenure } from "@/lib/data/tenure";
 
 const QuerySchema = z.object({
   level:  z.string().optional(),
@@ -27,12 +28,32 @@ export async function GET(request: Request) {
         include: {
           children: { take: 20 },
           parent:   true,
-          positions: {
-            take: 10,
-            include: { currentHolder: { include: { party: { select: { id: true, name: true, abbreviation: true, color: true } } } } },
-          },
+          positions: { take: 10 },
         },
       });
+
+      if (institution) {
+        const positionsWithHolders = await Promise.all(
+          institution.positions.map(async (position) => {
+            const activeTenure = await getActiveTenure(position.id);
+            const currentHolder =
+              activeTenure && activeTenure !== "not-yet-established"
+                ? {
+                    id: activeTenure.person.id,
+                    name: activeTenure.person.name,
+                    designation: activeTenure.person.designation,
+                    photoUrl: activeTenure.person.photoUrl,
+                    party: activeTenure.person.party
+                      ? { id: activeTenure.person.party.id, name: activeTenure.person.party.name, abbreviation: activeTenure.person.party.abbreviation, color: activeTenure.person.party.color }
+                      : null,
+                  }
+                : null;
+            return { ...position, currentHolder };
+          }),
+        );
+        return NextResponse.json({ data: { ...institution, positions: positionsWithHolders } });
+      }
+
       return NextResponse.json({ data: institution });
     }
 

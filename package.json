@@ -19,7 +19,9 @@
     "seed:neo4j": "tsx scripts/seed-neo4j.ts",
     "seed:neo4j:reset": "tsx scripts/seed-neo4j.ts -- --reset",
     "ingest:all": "npm run db:seed:all && npm run ingest:es && npm run seed:neo4j",
-    "worker": "tsx src/worker/index.ts"
+    "worker": "tsx src/worker/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",

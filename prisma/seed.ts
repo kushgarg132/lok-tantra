@@ -748,6 +748,46 @@ async function main() {
     await prisma.ideologyPosition.upsert({ where: { position: i.position }, update: i, create: i });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // TENURE RECORDS — link existing Persons to Positions
+  // ═══════════════════════════════════════════════════════════════
+  console.log("  Seeding tenure records...");
+
+  // Find all positions that have associated persons (via name/designation matching)
+  const allPositions = await prisma.position.findMany({
+    include: { institution: { select: { name: true } } },
+  });
+  const allPersons = await prisma.person.findMany({
+    select: { id: true, name: true, designation: true },
+  });
+
+  let tenureCreated = 0;
+  for (const position of allPositions) {
+    // Skip if tenure already exists for this position
+    const existing = await prisma.tenure.findFirst({ where: { positionId: position.id } });
+    if (existing) continue;
+
+    // Try to find a matching person by designation containing position title
+    const matchedPerson = allPersons.find((p) =>
+      p.designation?.toLowerCase().includes(position.title.toLowerCase()),
+    );
+
+    if (matchedPerson) {
+      await prisma.tenure.create({
+        data: {
+          personId: matchedPerson.id,
+          positionId: position.id,
+          startDate: new Date("2024-06-10"),
+          endDate: null,
+          startDateApproximate: false,
+          mechanism: "appointed",
+        },
+      });
+      tenureCreated++;
+    }
+  }
+  console.log(`  Created ${tenureCreated} tenure records.`);
+
   console.log("Seeding complete!");
 }
 
